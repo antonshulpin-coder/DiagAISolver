@@ -1,12 +1,14 @@
 # AI_HANDOFF.md
 
 ## Текущая версия
-**1.4.1 — Экспорт и бэкап данных** — 590 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + endpoint (v1.3.6) + app-заголовки (v1.3.7) + фенс-фикс (v1.3.9) + отчёт «Как расследовали» (v1.4.0) + экспорт/бэкап (v1.4.1). Real AI smoke-test **пройден (3/3 OK)**.
+**1.5.0 — Проекты (изоляция данных по проектам)** — 626 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + endpoint (v1.3.6) + app-заголовки (v1.3.7) + фенс-фикс (v1.3.9) + отчёт «Как расследовали» (v1.4.0) + экспорт/бэкап (v1.4.1) + **Проекты (v1.5.0)**. Real AI smoke-test **пройден (3/3 OK)**.
 
 ## Состояние проекта
-Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 590 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения (`ai.app_url`/`ai.app_title`); парсеры снимают markdown-фенс (`_strip_markdown_fence`); отчёт solve выводит «Как расследовали» (`_format_investigation_history`); команда «5. Экспорт и бэкап» (`export()`) пишет `export/problems_<дата>.md` и `backup/problems_<дата-время>.json` (только чтение хранилища).
+Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 626 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения (`ai.app_url`/`ai.app_title`); парсеры снимают markdown-фенс (`_strip_markdown_fence`); отчёт solve выводит «Как расследовали» (`_format_investigation_history`); команда «5. Экспорт и бэкап» (`export()`) пишет `export/problems_<дата>.md` и `backup/problems_<дата-время>.json` (только чтение хранилища); команда «6. Проекты» (`projects()`, `src/projects.py`) — CRUD проектов `data/projects.json` и привязка проблем (`project_id`).
 
-**Текущий этап:** v1.3 Полировка UX диагностики (UX1 — причина одним нажатием, UX2 — история расследования, UX3 — AI-подсказка «что дальше») реализована в `src/commands.py` (код v1.3.0). Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации; v1.3.9 — фикс markdown-фенсов; v1.4.0 — история расследования в отчёте solve; **v1.4.1 — экспорт и бэкап (команда меню 5, `export/` и `backup/`, только чтение)**.
+**Текущий этап:** **v1.5.0 — Проекты** (команда меню «6. Проекты», `src/projects.py`, изоляция данных по проектам) реализована и оформлена как релиз. Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации; v1.3.9 — фикс markdown-фенсов; v1.4.0 — история расследования в отчёте solve; v1.4.1 — экспорт и бэкап (команда меню 5, `export/` и `backup/`, только чтение); **v1.5.0 — Проекты (команда меню 6, `data/projects.json`, привязка проблем через `project_id`, изоляция данных)**.
+
+**Изоляция / гарантии (v1.5.0):** проекты пишутся в отдельный файл `data/projects.json` (личные данные, в `.gitignore`); `project_id` **не** попадает в AI-контекст, knowledge-записи и markdown-экспорт (проверено, поле упоминается только в командах проектов и `UPDATEABLE_FIELDS`); `src/diagnostic.py`, `src/solve.py`, `src/ai/*`, `src/storage.py` не менялись; удаление проекта отвязывает проблемы, но не удаляет их; «Экран проекта» — намеренная заглушка на v1.5.1 (в `_open_project`).
 
 ## Инфраструктура репозитория (v1.3.2–v1.3.3; дополнено v1.3.6)
 
@@ -16,7 +18,7 @@
 - Данные `data/problems.json` — в .gitignore (личные данные). Локальная копия: `backup/` (игнорируется). Бэкап разовый, не автоматизирован.
 - Пушить только в origin; force-push запрещён. Push — по явной команде пользователя.
 - Git-identity (локально в репо): `antonshulpin-coder <anton.shulpin@gmail.com>`.
-- Коммиты по фазам v0.1→v1.3.0: `8968eb8`, `459a39c`, `a25a0a7`, `f1b64bb`, `3b4dfd3`, `87ec152`; chore: `cee4ba3` (backup/.gitignore); docs v1.3.3: `a0201b5`; docs v1.3.4: `6b1f927`.
+- Коммиты по фазам v0.1→v1.3.0: `8968eb8`, `459a39c`, `a25a0a7`, `f1b64bb`, `3b4dfd3`, `87ec152`; chore: `cee4ba3` (backup/.gitignore); docs v1.3.3: `a0201b5`; docs v1.3.4: `6b1f927` *(служебный docs-коммит: cleanup ROADMAP, v0.5 закрыт, «Создать проект» перенесён в открытые пункты; кода не меняет; в CHANGELOG/ROADMAP отдельной записью не оформлен)*.
 - `smoke_real_ai.py` (корень): реальный прогон OpenAI-слоя. Ключ ТОЛЬКО из `OPENAI_API_KEY`; endpoint через `OPENAI_BASE_URL`; вывод маскируется; `data/` не трогает.
 
 ## v1.3 — Полировка UX диагностики (v1.3.0)
@@ -36,6 +38,8 @@
 - новый пункт меню «5. Подсказка «что дальше»» (номера 1–4, 0 не менялись);
 - условие: есть открытые гипотезы И нет pending-шагов; иначе «Подсказка недоступна сейчас» без вызова AI;
 - reuse `suggest_next_check` + `get_diagnostic_context`; y → `add_check` с обработкой «Выполнили уже?»; ошибки AI → информативное сообщение, graceful.
+
+> **Уточнение по номеру «5»** (`src/commands.py`, `_diagnostic_loop`): пункт «5. Подсказка «что дальше»» находится **внутри подменю диагностики** (1–5, 0 — выход), НЕ в главном меню. В главном меню (`src/menu.py`) номер «5» занят другой командой — **«5. Экспорт и бэкап»** (добавлена в v1.4.1). Это два разных «5» в разных меню; коллизии нет, но при работе с меню важно различать контекст.
 
 ### Изоляция / ограничения
 - Изменён только `src/commands.py` + новый тест-файл. Ядро (`diagnostic.py`, `solve.py`, `problems.py`) и AI-слой не тронуты.
@@ -181,7 +185,7 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 
 ## Smoke-test OpenAI провайдера (v1.1.1)
 
-**Реальный API-запрос: NOT RUN** — переменная `OPENAI_API_KEY` отсутствует в environment (не считается ошибкой проекта).
+**Реальный API-запрос: NOT RUN** — переменная `OPENAI_API_KEY` отсутствует в environment (не считается ошибкой проекта). *(историческая запись; real-часть закрыта в v1.3.8 — 3/3 OK)*
 
 **Offline smoke-test: 8/8 PASS**
 
@@ -228,26 +232,33 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | v1.3.9 | Фикс парсинга markdown-фенсов `_strip_markdown_fence` в парсерах диагностики | ✅ |
 | v1.4.0 | История расследования в отчёте solve: секция «Как расследовали» (`_format_investigation_history`) | ✅ |
 | v1.4.1 | Экспорт и бэкап: команда меню 5, `export/problems_<дата>.md` + `backup/problems_<дата-время>.json` | ✅ |
+| v1.5.0 | Проекты: команда меню 6, `src/projects.py`, `data/projects.json`, привязка проблем через `project_id` (+36 тестов, 626 total) | ✅ |
 
-## Результаты тестов (v1.4.1)
-```
-590 passed in 5.17s
-```
-- test_problems.py: 43
-- test_solve.py: 48
-- test_solve_cli.py: 21
-- test_search.py: 31
-- test_storage.py: 31
-- test_router.py: 7
-- test_ai.py: 57
-- test_solve_ai.py: 39
-- test_ai_openai.py: 52
-- test_ai_config.py: 22
-- test_diagnostic.py: 75
-- test_diagnostic_ai.py: 62
-- test_diagnostic_cli.py: 18
-- test_diagnostic_ai_context.py: 15
-- test_diagnostic_ux.py: 20
+## Результаты тестов (актуально на v1.5.0)
+
+Подсчёт — источник истины `pytest --collect-only -q` на зафиксированном состоянии v1.5.0: **626 passed, 0 failed**.
+
+| Файл | Кол-во | Пополнялся в |
+|------|-------:|--------------|
+| test_ai.py | 57 | v1.0 Phase 1 |
+| test_ai_config.py | 22 | v1.3.7 |
+| test_ai_openai.py | 60 | v1.3.7 |
+| test_diagnostic.py | 75 | v1.2.1 |
+| test_diagnostic_ai.py | 74 | v1.3.9 |
+| test_diagnostic_ai_context.py | 15 | v1.2.4 |
+| test_diagnostic_cli.py | 18 | v1.2.3 |
+| test_diagnostic_ux.py | 20 | v1.3.0 |
+| test_export.py | 18 | v1.4.1 |
+| test_problems.py | 43 | v0.9.1 |
+| test_projects.py | 36 | v1.5.0 |
+| test_router.py | 7 | v0.9.3 |
+| test_search.py | 31 | v0.8 |
+| test_solve.py | 48 | v0.9.2 |
+| test_solve_ai.py | 39 | v1.0 Phase 2 |
+| test_solve_cli.py | 21 | v0.9.4 |
+| test_solve_report_history.py | 11 | v1.4.0 |
+| test_storage.py | 31 | v0.8 |
+| **Итого** | **626** | 
 
 ## Что реализовано в v1.0 Phase 4
 
@@ -373,6 +384,26 @@ src/commands.py               — CLI, auto-detect provider
 | `tests/test_diagnostic_ai_context.py` | Новый: 15 тестов (v1.2.4) |
 | `src/commands.py` | +UX-полировка (v1.3.0): _confirm_cause (UX1), история в _show_diagnostic_state (UX2, _DIAG_HISTORY_LIMIT), _diagnostic_ai_hint + пункт меню 5 (UX3). Ядро/AI-слой не менялись |
 | `tests/test_diagnostic_ux.py` | Новый: 20 тестов (v1.3.0) |
+| `smoke_real_ai.py` | Новый: реальный smoke-скрипт (v1.3.5), ключ только из env, маскирование, изоляция данных |
+| `src/ai/config.py` | +base_url (v1.3.6); +app_url/app_title (v1.3.7) |
+| `src/ai/openai.py` | +base_url/`_chat` на `self.api_url` (v1.3.6); +заголовки HTTP-Referer/X-Title (v1.3.7); +`_strip_markdown_fence` + применение в парсерах (v1.3.9) |
+| `tests/test_ai_openai.py` | +base_url-тесты (v1.3.6); +header-тесты (v1.3.7) |
+| `tests/test_ai_config.py` | +base_url-тесты (v1.3.6); +app-поля (v1.3.7) |
+| `config/settings.json` | +base_url/app_url/app_title поля (v1.3.6–v1.3.7) |
+| (v1.3.8) | Только доки (AI_HANDOFF/CHANGELOG/ROADMAP): результат real smoke 3/3 OK; код не менялся |
+| `src/commands.py` | +секция «Как расследовали» в `_do_solve` (v1.4.0): `_format_investigation_history`, `_show_investigation_history` |
+| `tests/test_solve_report_history.py` | Новый: 11 тестов (v1.4.0) |
+| `src/menu.py` | +пункт меню «5. Экспорт и бэкап» (v1.4.1) |
+| `src/router.py` | +диспетчер пункта «5» → `export()` (v1.4.1) |
+| `src/commands.py` | +команда экспорт/бэкап (v1.4.1): export() и приватные `_problems_to_markdown`, `_export_markdown`, `_export_backup`, `_export_menu` |
+| `tests/test_export.py` | Новый: 18 тестов (v1.4.1) |
+| `src/projects.py` | Новый: хранилище и CRUD проектов, привязка проблем (v1.5.0): `create_project`, `rename_project`, `close_project`, `reopen_project`, `delete_project`, `bind_problem`, `unbind_all_problems`, `problems_of_project`, `count_project_problems` |
+| `src/problems.py` | +`project_id` в `UPDATEABLE_FIELDS` (v1.5.0) |
+| `src/menu.py` | +пункт меню «6. Проекты» (v1.5.0) |
+| `src/router.py` | +диспетчер пункта «6» → `projects()` (v1.5.0) |
+| `src/commands.py` | +команда «Проекты» (v1.5.0): `projects()` и подменю `_projects_loop`, `_pick_project`, `_create_project`, `_list_projects`, `_open_project`, `_rename_project`, `_toggle_project`, `_delete_project`, `_bind_problem_flow`, `_bind_unbind_flow`, `_filter_problems`; опция «п» в `_handle_existing_problem` |
+| `tests/test_projects.py` | Новый: 36 тестов (v1.5.0) |
+| `.gitignore` | +`data/projects.json` (личные данные проектов, v1.5.0) |
 
 ## Ограничения
 
@@ -384,7 +415,7 @@ src/commands.py               — CLI, auto-detect provider
 
 ## Следующий этап
 
-Кодовая база: v1.3 UX-полировка + v1.3.6 endpoint + v1.3.7 app-заголовки + v1.3.9 фенс-фикс + v1.4.0 история расследования + v1.4.1 экспорт/бэкап (590 тестов) реализованы. **Real AI smoke-test ЗАКРЫТ (v1.3.8)** — 3/3 OK; фенсы зафиксированы (v1.3.9); **v1.4.0** добавил «Как расследовали» в отчёт solve; **v1.4.1** добавил команду «Экспорт и бэкап» (только чтение `data/problems.json`, markdown переиспользует `_format_investigation_history`; `export/` и `backup/` в .gitignore; для пункта меню тронуты `src/menu.py` и `src/router.py`).
+Кодовая база: v1.3 UX-полировка + v1.3.6 endpoint + v1.3.7 app-заголовки + v1.3.9 фенс-фикс + v1.4.0 история расследования + v1.4.1 экспорт/бэкап + v1.5.0 Проекты (626 тестов) реализованы. **Real AI smoke-test ЗАКРЫТ (v1.3.8)** — 3/3 OK; фенсы зафиксированы (v1.3.9); **v1.4.0** добавил «Как расследовали» в отчёт solve; **v1.4.1** добавил команду «Экспорт и бэкап» (только чтение `data/problems.json`, markdown переиспользует `_format_investigation_history`; `export/` и `backup/` в .gitignore; для пункта меню тронуты `src/menu.py` и `src/router.py`); **v1.5.0** добавил команду «Проекты» (`src/projects.py`, `data/projects.json`, привязка проблем через `project_id`; `project_id` добавлен в `UPDATEABLE_FIELDS`; меню/router/commands правки; `data/projects.json` в .gitignore).
 
 Следующий этап: **Ожидает решения пользователя**.
 
@@ -399,5 +430,7 @@ src/commands.py               — CLI, auto-detect provider
 5. Тесты: `.\.venv\Scripts\python.exe -m pytest tests -v`
 6. Все AI-вызовы опциональны — SOLVE работает без них
 7. Не добавляй сторонние зависимости
-8. Не меняй существующие тесты (итог на текущий момент — 521)
+8. Не меняй существующие тесты (итог на текущий момент — 626)
 9. Малые изменения, тесты после каждого изменения
+
+> Статус рабочего дерева: чисто, актуальный релиз v1.5.0 «Проекты» (626 тестов).

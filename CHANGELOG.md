@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## v1.5.0 — Проекты: изоляция данных по проектам
+
+### Новое
+- Новая команда меню **«6. Проекты»** (`src/menu.py`, диспетчер `src/router.py`; реализация `projects()` в `src/commands.py`):
+  - подменю: 1 создать, 2 список, 3 открыть, 4 переименовать, 5 закрыть/переоткрыть, 6 удалить, 7 привязать/отвязать проблему, 8 проблемы проекта (фильтр), 0 назад;
+  - привязка/отвязка проблемы доступна и из потока существующей проблемы («п. Привязать к проекту / отвязать» в `_handle_existing_problem`);
+  - внутри подменю проектов — своя нумерация 1–8 + 0 (не пересекается ни с главным меню, ни с подменю диагностики).
+- Новый модуль `src/projects.py` — хранилище и CRUD проектов (ядро, без CLI):
+  - `Project` = {id, name, goal, created, status: active|done}; файл `data/projects.json` (атомарная запись tmp+rename, тот же паттерн, что в `src/problems.py`);
+  - CRUD: `create_project`, `get_project`, `get_all_projects`, `rename_project`, `set_project_status`, `close_project`, `reopen_project`, `delete_project`;
+  - привязка: `bind_problem`, `unbind_all_problems`, `problems_of_project`, `count_project_problems`; проблема принадлежит не более чем одному проекту; `project_id=None` — отвязка.
+  - валидация: `ProjectError` (пустое имя, неверный статус, битый/не-list JSON, привязка к несуществующему проекту).
+- `src/problems.py`: `project_id` добавлен в `UPDATEABLE_FIELDS` (поле проблем, без миграций; отсутствует у старых записей).
+- Удаление проекта **не удаляет проблемы** — только отвязывает (жёсткое правило, покрыто тестом).
+
+### Изоляция / гарантии
+- Проекты пишутся в отдельный файл `data/projects.json` (личные данные) → добавлен в `.gitignore` (аналогично `data/problems.json`).
+- `project_id` **не** попадает в AI-контекст, knowledge-записи и markdown-экспорт (проверено `git grep`; поле упоминается только в командах проектов и `UPDATEABLE_FIELDS`).
+- `src/diagnostic.py`, `src/solve.py`, `src/ai/*`, `src/storage.py` — не менялись; ядро SOLVE/diagnostics работают как раньше.
+- Заглушка «(Экран проекта — в v1.5.1.)» — намеренная (открытие проекта показывает сводку; детальный экран — следующий этап), покрыта тестом.
+
+### Тесты
+- `tests/test_projects.py` (+36): CRUD (create/fields, require name, trim goal, ISO-created, list/get, rename name/goal, rename-only-goal, rename non-empty, missing id, close/reopen, invalid status, delete/missing delete); storage (missing → [], broken JSON, non-list, atomic persistence); миграция `project_id` (byte-for-byte сохранение остальных полей, отсутствие авто-добавления); bind/unbind (bind sets id, unknown project → error, unknown problem → None, unbind → None, at most one project); delete-unbind жёсткое правило (unbind_all keep problems, delete CLI unbinds but keeps, cancel keeps everything); CLI (create via cli, list counters, open stub, filter by project, filter without project, bind flow bind/unbind); обработка ошибок (broken JSON → «Ошибка данных», bind to missing project no-crash); menu/router («6. Проекты» в меню, `route("6")` → projects).
+- Итог: **626 passed** (было 590, +36).
+
+### Версия
+- `pyproject.toml` → **1.5.0**.
+
+---
+
 ## v1.4.1 — Экспорт и бэкап данных
 
 ### Новое
@@ -152,7 +182,7 @@ OpenRouter/OpenAI часто оборачивают JSON в markdown-фенсы 
 - `src/commands.py`:
   - **UX1** `_confirm_cause(problem)` — подтверждение причины одним нажатием: при ровно одной confirmed-гипотезе предлагает её текст и принимает по Enter/y; при нескольких — нумерованный выбор; при отсутствии — прежний ручной ввод без изменений.
   - **UX2** `_show_diagnostic_state` — секции «История проверок» (выполненные шаги: описание → результат → затронутая гипотеза (статус)) и «Проверено/Отклонено» (терминальные гипотезы). Пустая история не выводится; лимит показа `_DIAG_HISTORY_LIMIT = 6` + сообщение «… и ещё N».
-  - **UX3** `_diagnostic_ai_hint(problem, provider)` + пункт меню «5. Подсказка «что дальше»» — следующий шаг при застрявшей сессии (есть открытые гипотезы и нет pending-шагов); иначе «Подсказка недоступна сейчас» без вызова AI. Reuse `suggest_next_check` + `get_diagnostic_context`; y → `add_check` с обработкой «Выполнили уже?». Ошибки AI → информативное сообщение, graceful.
+  - **UX3** `_diagnostic_ai_hint(problem, provider)` + пункт меню «5. Подсказка «что дальше»» (в **подменю диагностики** `_diagnostic_loop`: 1–5, 0 — выход) — следующий шаг при застрявшей сессии (есть открытые гипотезы и нет pending-шагов); иначе «Подсказка недоступна сейчас» без вызова AI. Reuse `suggest_next_check` + `get_diagnostic_context`; y → `add_check` с обработкой «Выполнили уже?». Ошибки AI → информативное сообщение, graceful. (Уточнение: «5» здесь — пункт подменю диагностики, НЕ главного меню; в главном меню `src/menu.py` номер «5» занят позже, в v1.4.1, командой «Экспорт и бэкап».)
 - Номера существующих пунктов меню (1–4, 0) не менялись; старое поведение сохранено.
 
 ### Изоляция / ограничения
@@ -552,7 +582,7 @@ OpenRouter/OpenAI часто оборачивают JSON в markdown-фенсы 
 - Обработка: регистр, множественные пробелы, повторяющиеся слова, русский/английский текст
 
 ### Тесты
-- 69 тестов (было 34): 25 для search.py, 31 для storage.py, 7 для router.py
+- 69 тестов (было 34): 25 для search.py, 31 для storage.py, 7 для router.py *(историческая запись, цифры неточны — 25+31+7≠69; оставлено без пересчёта)*
 
 ### Архитектура
 - `search.py` отделён от CLI — алгоритм можно использовать напрямую в SOLVE
