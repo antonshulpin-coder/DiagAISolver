@@ -73,12 +73,13 @@
 - [x] v1.3.2: remote-бэкап — remote origin (приватный), push истории + тегов, локальный бэкап `backup/`, `backup/` в .gitignore
 - [x] v1.3.3: обновлены AI_HANDOFF.md / CHANGELOG.md (раздел «Инфраструктура репозитория»)
 
-## Версия 1.3.5–1.3.9 — Real smoke-test + endpoint + app headers + фенс-фикс (код менялся)
+## Версия 1.3.5–1.4.0 — Real smoke-test + endpoint + app headers + фенс-фикс + отчёт (код менялся)
 - [x] v1.3.5: скрипт `smoke_real_ai.py` (ключ только из env, маскирование, изоляция данных) + первый реальный прогон
 - [x] v1.3.6: `base_url` в `OpenAIProvider`/`AIConfig`/`load_config`/`get_ai_provider` + тесты — endpoint-оверрайд под OpenRouter и иные OpenAI-совместимые API
 - [x] v1.3.7: заголовки идентификации приложения (`HTTP-Referer`/`X-Title`, `app_url`/`app_title`) — устранили 403 от OpenRouter
 - [x] v1.3.8: **Real AI smoke-test выполнен успешно** — 3/3 шага OK на OpenRouter (`format_knowledge`, `suggest_hypotheses`, `suggest_next_check`); изоляция `data/` подтверждена (545→549 тестов)
 - [x] v1.3.9: фикс парсинга markdown-фенсов (`_strip_markdown_fence`) в парсерах диагностики — устранён баг, найденный smoke v1.3.8 (549→561 тестов)
+- [x] v1.4.0: секция «Как расследовали» в отчёте solve (`_format_investigation_history` по полной `problem["diagnostic"]`, обрезка `_DIAG_HISTORY_LIMIT`, байт-регресс без диагностики; 561→572 тестов)
 
 ## Открытые пункты
 - [ ] Режим «Создать проект»: группировка проблем/заметок с общим контекстом (изначально задуман в v0.9, не реализован)

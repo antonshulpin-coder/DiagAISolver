@@ -343,6 +343,8 @@ def _do_solve(problem, provider=None, cause_default=""):
 
     _show_summary(result)
 
+    _show_investigation_history(problem)
+
     if result["status"] in ("solved", "failed"):
         _ask_convert(result, provider)
     elif result["status"] == "solving":
@@ -499,6 +501,67 @@ def _show_diagnostic_state(problem):
     if conclusion:
         print(f"Вывод: {conclusion}")
     print()
+
+
+def _format_investigation_history(problem) -> list[str]:
+    """Форматирует секцию «Как расследовали» для отчёта solve.
+
+    Компактный консольный отчёт по полной сессии problem["diagnostic"]:
+    вывод, подтверждённая причина, выполненные шаги, отклонённые гипотезы.
+    Без диагностики/с пустой сессией возвращает пустой список (секция не нужна).
+    """
+    session = problem.get("diagnostic")
+    if not isinstance(session, dict):
+        return []
+    hypotheses = session.get("hypotheses") or []
+    steps = session.get("steps") or []
+    conclusion = session.get("conclusion") or ""
+    if not hypotheses and not steps and not conclusion:
+        return []
+
+    lines = ["\n--- Как расследовали ---"]
+
+    if conclusion:
+        lines.append(f"Вывод: {conclusion}")
+
+    confirmed = [h for h in hypotheses if h.get("status") == "confirmed"]
+    if confirmed:
+        lines.append("Причина (подтверждена):")
+        for h in confirmed:
+            lines.append(f"  [{h['id']}] {h['text']}")
+
+    done = [s for s in steps if s.get("status") == "done"]
+    if done:
+        shown = done[:_DIAG_HISTORY_LIMIT]
+        lines.append("Выполненные шаги:")
+        for s in shown:
+            hyp = next(
+                (h for h in hypotheses if h.get("id") == s.get("hypothesis_id")),
+                None,
+            )
+            status_ru = _HYP_STATUS_RU.get(hyp.get("status"), "—") if hyp else "—"
+            hyp_part = f" → {hyp['text']} ({status_ru})" if hyp else ""
+            detail = s.get("outcome") or s.get("result", "")
+            step_part = f" → {detail}" if detail else ""
+            lines.append(f"  [{s['id']}] {s.get('description', '')}{step_part}{hyp_part}")
+        if len(done) > _DIAG_HISTORY_LIMIT:
+            lines.append(f"  … и ещё {len(done) - _DIAG_HISTORY_LIMIT} шаг(ов)")
+
+    rejected = [h for h in hypotheses if h.get("status") == "rejected"]
+    if rejected:
+        lines.append("Отклонённые гипотезы:")
+        for h in rejected[:_DIAG_HISTORY_LIMIT]:
+            lines.append(f"  [{h['id']}] {h['text']}")
+        if len(rejected) > _DIAG_HISTORY_LIMIT:
+            lines.append(f"  … и ещё {len(rejected) - _DIAG_HISTORY_LIMIT} гипотез(ы)")
+
+    return lines
+
+
+def _show_investigation_history(problem):
+    """Печатает секцию «Как расследовали» в отчёт solve (если есть диагностика)."""
+    for line in _format_investigation_history(problem):
+        print(line)
 
 
 def _diagnostic_manual_hypotheses():
