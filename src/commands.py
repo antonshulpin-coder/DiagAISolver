@@ -28,6 +28,7 @@ from src.solve import (
 from src import problems as _problems
 from src import storage as _storage
 from src import diagnostic as _diagnostic
+from src import projects as _projects
 from src.ai.provider import NullProvider
 from src.ai.types import AIResponse
 from src.ai.config import get_ai_provider
@@ -189,6 +190,7 @@ def _handle_existing_problem(problem, provider=None):
         print("1. Продолжить решение")
         print("2. Пометить как решённую")
         print("3. Пометить как нерешённую")
+        print("п. Привязать к проекту / отвязать")
         print("0. Назад")
 
         choice = input("\nВыберите: ").strip()
@@ -202,6 +204,8 @@ def _handle_existing_problem(problem, provider=None):
             result = resolve_problem(problem["id"], cause="", solution="", helped=False)
             print(f"\nСтатус: не решена")
             _ask_convert(result, provider)
+        elif choice in ("п", "П", "p", "P"):
+            _bind_problem_flow(problem["id"])
         else:
             print("\nОтмена.")
     elif status == "failed":
@@ -210,6 +214,7 @@ def _handle_existing_problem(problem, provider=None):
         print("1. Повторить попытку")
         print("2. Архивировать")
         print("3. Конвертировать в базу знаний")
+        print("п. Привязать к проекту / отвязать")
         print("0. Назад")
 
         choice = input("\nВыберите: ").strip()
@@ -223,6 +228,8 @@ def _handle_existing_problem(problem, provider=None):
         elif choice == "3":
             record = convert_to_knowledge(problem["id"])
             print(f"\nЗапись сохранена в Базу знаний: {record['id']}")
+        elif choice in ("п", "П", "p", "P"):
+            _bind_problem_flow(problem["id"])
         else:
             print("\nОтмена.")
 
@@ -1118,5 +1125,249 @@ def export():
         print(f"\nОшибка данных: {exc}")
     except OSError as exc:
         print(f"\nОшибка файла: {exc}")
+    except (KeyboardInterrupt, EOFError):
+        print("\n\nВозврат в главное меню.")
+
+
+# ── ПРОЕКТЫ (ядерное хранилище, ступень v1.5.0) ─────────────────
+
+
+def _pick_project(prompt="\nНомер проекта (Enter — отмена): "):
+    """Выводит проекты, возвращает (выбранный, список) или (None, [])."""
+    projects = _projects.get_all_projects()
+    for i, pr in enumerate(projects, start=1):
+        status = "закрыт" if pr["status"] == "done" else "активен"
+        print(f"{i}. {pr['name']} [{status}]")
+    if not projects:
+        print("Проектов нет.")
+        return None, projects
+    choice = input(prompt).strip()
+    if not choice.isdigit() or not 1 <= int(choice) <= len(projects):
+        print("\nОтмена.")
+        return None, projects
+    return projects[int(choice) - 1], projects
+
+
+def _bind_problem_flow(problem_id):
+    """Выбор проекта (или «без проекта») для привязки/отвязки проблемы."""
+    projects = _projects.get_all_projects()
+    print("\n--- Куда привязать проблему ---")
+    if projects:
+        for i, pr in enumerate(projects, start=1):
+            status = "закрыт" if pr["status"] == "done" else "активен"
+            print(f"{i}. {pr['name']} [{status}]")
+    else:
+        print("Проектов пока нет.")
+    print("0. Без проекта (отвязать)")
+    print("Enter. Назад")
+
+    choice = input("\nВыберите: ").strip()
+    if choice == "":
+        return
+    if choice == "0":
+        result = _projects.bind_problem(problem_id, None)
+        if result is not None:
+            print("\nПроблема отвязана от проекта.")
+        else:
+            print("\nПроблема не найдена.")
+        return
+    if choice.isdigit() and 1 <= int(choice) <= len(projects):
+        pr = projects[int(choice) - 1]
+        result = _projects.bind_problem(problem_id, pr["id"])
+        if result is not None:
+            print(f"\nПроблема привязана к проекту «{pr['name']}».")
+        else:
+            print("\nПроблема не найдена.")
+        return
+    print("\nНеверный выбор.")
+
+
+def _create_project():
+    print("\n--- Новый проект ---")
+    name = input("Название: ").strip()
+    if not name:
+        print("\nНазвание обязательно.")
+        return
+    goal = input("Цель: ").strip()
+    project = _projects.create_project(name, goal)
+    print(f"\nПроект создан: {project['id']}")
+    print(f"Статус: {project['status']}")
+
+
+def _list_projects():
+    print("\n--- Проекты ---")
+    projects = _projects.get_all_projects()
+    if not projects:
+        print("Пока нет проектов.")
+        return
+    project_map = {p["id"]: p for p in projects}
+    problems = _problems.get_all_problems()
+    counts = {}
+    for p in problems:
+        pid = p.get("project_id")
+        if pid in project_map:
+            counts[pid] = counts.get(pid, 0) + 1
+    for pr in projects:
+        status = "закрыт" if pr["status"] == "done" else "активен"
+        count = counts.get(pr["id"], 0)
+        print(f"{pr['name']} [{status}] — подзадач: {count}")
+        if pr["goal"]:
+            print(f"   Цель: {pr['goal']}")
+
+
+def _open_project():
+    project, _ = _pick_project("\n\nНомер проекта (Enter — отмена): ")
+    if project is None:
+        return
+    problems = _projects.problems_of_project(project["id"])
+    solved = sum(1 for p in problems if p["status"] == "solved")
+    status = "закрыт" if project["status"] == "done" else "активен"
+    print(f"\nПроект: {project['name']} [{status}]")
+    print(f"Цель: {project['goal'] or '(не указана)'}")
+    print(f"Подзадач: {len(problems)} (решено: {solved})")
+    print("\n(Экран проекта — в v1.5.1.)")
+
+
+def _rename_project():
+    project, _ = _pick_project()
+    if project is None:
+        return
+    print(f"\nТекущее название: {project['name']}")
+    print(f"Текущая цель: {project['goal']}")
+    new_name = input("Новое название (Enter — не менять): ").strip()
+    new_goal = input("Новая цель (Enter — не менять): ").strip()
+    updated = _projects.rename_project(
+        project["id"],
+        name=new_name if new_name else None,
+        goal=new_goal if new_goal else None,
+    )
+    if updated is not None:
+        print("\nПроект обновлён.")
+    else:
+        print("\nПроект не найден.")
+
+
+def _toggle_project():
+    project, _ = _pick_project()
+    if project is None:
+        return
+    if project["status"] == "done":
+        _projects.reopen_project(project["id"])
+        print("\nПроект переоткрыт (active).")
+    else:
+        _projects.close_project(project["id"])
+        print("\nПроект закрыт (done).")
+
+
+def _delete_project():
+    project, _ = _pick_project()
+    if project is None:
+        return
+    count = _projects.count_project_problems(project["id"])
+    if count:
+        confirm = input(
+            f"\nК проекту привязано {count} проблем. Они будут ОТВЯЗАНЫ (не удалены). Продолжить? (y/n): "
+        ).strip()
+        confirm = confirm.lower()
+        if confirm not in ("y", "д", "yes"):
+            print("\nОтменено.")
+            return
+        _projects.unbind_all_problems(project["id"])
+    _projects.delete_project(project["id"])
+    print("\nПроект удалён.")
+
+
+def _bind_unbind_flow():
+    problems = _problems.get_all_problems()
+    if not problems:
+        print("\nНет проблем для привязки.")
+        return
+    print("\n--- Проблемы ---")
+    for i, p in enumerate(problems, start=1):
+        print(f"{i}. [{p['status']}] {p['title']}")
+    choice = input("\nНомер проблемы (Enter — отмена): ").strip()
+    if not choice.isdigit() or not 1 <= int(choice) <= len(problems):
+        print("\nОтмена.")
+        return
+    _bind_problem_flow(problems[int(choice) - 1]["id"])
+
+
+def _filter_problems():
+    print("\n--- Проблемы по проекту ---")
+    print("1. По проекту")
+    print("2. Без проекта")
+    print("3. Все")
+    print("0. Назад")
+    choice = input("\nВыберите: ").strip()
+    if choice == "0":
+        return
+
+    problems = _problems.get_all_problems()
+    project_map = {p["id"]: p["name"] for p in _projects.get_all_projects()}
+
+    if choice == "1":
+        project, _ = _pick_project()
+        if project is None:
+            return
+        matched = [p for p in problems if p.get("project_id") == project["id"]]
+        label = project["name"]
+    elif choice == "2":
+        matched = [p for p in problems if not p.get("project_id")]
+        label = "без проекта"
+    else:
+        matched = problems
+        label = "все"
+
+    print(f"\n--- Проблемы ({label}): {len(matched)} ---")
+    for i, p in enumerate(matched, start=1):
+        proj = project_map.get(p.get("project_id"))
+        proj_txt = f" [проект: {proj}]" if proj else ""
+        print(f"{i}. [{p['status']}] {p['title']}{proj_txt}")
+
+
+def _projects_loop():
+    while True:
+        print("\n====== ПРОЕКТЫ ======")
+        print("1. Создать проект")
+        print("2. Список проектов")
+        print("3. Открыть проект")
+        print("4. Переименовать")
+        print("5. Закрыть / переоткрыть")
+        print("6. Удалить проект")
+        print("7. Привязать / отвязать проблему")
+        print("8. Проблемы проекта (фильтр)")
+        print("0. Назад")
+
+        choice = input("\nВыберите: ").strip()
+        if choice == "0":
+            return
+        elif choice == "1":
+            _create_project()
+        elif choice == "2":
+            _list_projects()
+        elif choice == "3":
+            _open_project()
+        elif choice == "4":
+            _rename_project()
+        elif choice == "5":
+            _toggle_project()
+        elif choice == "6":
+            _delete_project()
+        elif choice == "7":
+            _bind_unbind_flow()
+        elif choice == "8":
+            _filter_problems()
+        else:
+            print("\nНеверный выбор.")
+
+
+def projects():
+    """Команда «Проекты»: CRUD проектов, привязка проблем, фильтр списка."""
+    try:
+        _projects_loop()
+    except _projects.ProjectError as exc:
+        print(f"\nОшибка данных: {exc}")
+    except _problems.ProblemError as exc:
+        print(f"\nОшибка данных: {exc}")
     except (KeyboardInterrupt, EOFError):
         print("\n\nВозврат в главное меню.")

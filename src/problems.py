@@ -12,7 +12,7 @@ VALID_STATUSES = ("new", "investigating", "solving", "solved", "failed", "archiv
 UPDATEABLE_FIELDS = (
     "title", "description", "context", "error_message",
     "tags", "status", "solution", "cause", "helped", "related_record_id",
-    "diagnostic",
+    "diagnostic", "project_id",
 )
 
 

@@ -1,4 +1,4 @@
-from src.commands import learn, solve_flow, build, knowledge, export
+from src.commands import learn, solve_flow, build, knowledge, export, projects
 
 
 def route(choice):
@@ -16,6 +16,9 @@ def route(choice):
 
     elif choice == "5":
         export()
+
+    elif choice == "6":
+        projects()
 
     elif choice == "0":
         print("\nДо встречи!")

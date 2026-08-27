@@ -6,6 +6,7 @@ __pycache__/
 # Personal data remains local and is not uploaded to a repository.
 data/notes.json
 data/problems.json
+data/projects.json
 data/*_test.json
 
 # Local manual backups (out of git).
