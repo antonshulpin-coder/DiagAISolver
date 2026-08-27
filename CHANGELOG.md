@@ -5,7 +5,7 @@
 ### v1.3.5 — инструмент реального smoke-теста
 - Новый `smoke_real_ai.py` (в корне, не в `src/`): последовательный прогон `format_knowledge`, `suggest_hypotheses`, `suggest_next_check` на демо-проблеме.
 - Ключ читается ТОЛЬКО из `OPENAI_API_KEY`; вывод маскируется (`sk-***last4`), ответы обрезаются до 100 символов; изоляция `data/problems.json` (хэш до/после); идемпотентен, в `data/` ничего не пишет.
-- **Реальный прогон: все 3 шага → HTTP 403.** Диагноз: ключ `sk-or-v1-...` (OpenRouter) отклонён и на `api.openai.com`, и на OpenRouter; на OpenRouter тело ошибки `"Access denied by security policy."` — блокировка по политике безопасности аккаунта/ключа, НЕ по коду. Основание: не 401 (ключ), не 402 (кредиты). **Пункт Real AI smoke-test остаётся открытым** до решения на стороне провайдера.
+- **Реальный прогон: все 3 шага → HTTP 403.** Диагноз: ключ в формате OpenRouter отклонён и на `api.openai.com`, и на OpenRouter; на OpenRouter тело ошибки `"Access denied by security policy."` — блокировка по политике безопасности аккаунта/ключа, НЕ по коду. Основание: не 401 (ключ), не 402 (кредиты). **Пункт Real AI smoke-test остаётся открытым** до решения на стороне провайдера.
 
 ### v1.3.6 — настраиваемый API endpoint (base_url)
 - `src/ai/openai.py`: `OpenAIProvider(base_url=...)` (по умолчанию `https://api.openai.com/v1`); URL = `base_url + "/chat/completions"`. Поддержана правка `_chat` на `self.api_url`.
