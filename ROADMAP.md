@@ -73,11 +73,12 @@
 - [x] v1.3.2: remote-бэкап — remote origin (приватный), push истории + тегов, локальный бэкап `backup/`, `backup/` в .gitignore
 - [x] v1.3.3: обновлены AI_HANDOFF.md / CHANGELOG.md (раздел «Инфраструктура репозитория»)
 
-## Версия 1.3.5/1.3.6 — Real smoke-test + настраиваемый endpoint (код менялся)
-- [x] v1.3.5: скрипт `smoke_real_ai.py` (ключ только из env, маскирование, изоляция данных) + реальный прогон
-- [x] v1.3.6: `base_url` в `OpenAIProvider`/`AIConfig`/`load_config`/`get_ai_provider` + тесты (545 passed) — endpoint-оверрайд под OpenRouter и иные OpenAI-совместимые API
+## Версия 1.3.5–1.3.8 — Real smoke-test + endpoint + app headers (код менялся)
+- [x] v1.3.5: скрипт `smoke_real_ai.py` (ключ только из env, маскирование, изоляция данных) + первый реальный прогон
+- [x] v1.3.6: `base_url` в `OpenAIProvider`/`AIConfig`/`load_config`/`get_ai_provider` + тесты — endpoint-оверрайд под OpenRouter и иные OpenAI-совместимые API
+- [x] v1.3.7: заголовки идентификации приложения (`HTTP-Referer`/`X-Title`, `app_url`/`app_title`) — устранили 403 от OpenRouter
+- [x] v1.3.8: **Real AI smoke-test выполнен успешно** — 3/3 шага OK на OpenRouter (`format_knowledge`, `suggest_hypotheses`, `suggest_next_check`); изоляция `data/` подтверждена (545→549 тестов)
 
 ## Открытые пункты
 - [ ] Режим «Создать проект»: группировка проблем/заметок с общим контекстом (изначально задуман в v0.9, не реализован)
-- [ ] Real AI smoke-test: реальный прогон OpenAI-провайдера (diagnostic + suggest методы) на живом ключе. **Прогон выполнен (v1.3.5), но все шаги → HTTP 403 `"Access denied by security policy."` со стороны OpenRouter (блок ключа/аккаунта, не код). Ждёт решения на стороне провайдера; скрипт готов к перепроверке.**
 - Следующий этап: **Ожидает решения пользователя** (v1.4 или иное). НЕ начинать без явной команды.
