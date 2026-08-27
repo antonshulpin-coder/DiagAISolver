@@ -1215,17 +1215,137 @@ def _list_projects():
             print(f"   Цель: {pr['goal']}")
 
 
+_PROBLEM_STATUS_RU = {
+    "new": "новая",
+    "investigating": "расследование",
+    "solving": "в работе",
+    "solved": "решена",
+    "failed": "не решена",
+    "archived": "архив",
+}
+
+
+def _format_created_date(created):
+    """«2026-08-28T12:00:00+00:00» → «2026-08-28»; на отсутствие — '—'."""
+    if not created:
+        return "—"
+    return str(created)[:10]
+
+
+def _label_problem_status(problem):
+    return _PROBLEM_STATUS_RU.get(problem.get("status"), problem.get("status", "?"))
+
+
+def _show_problem_detail(problem):
+    """Чтение-только просмотр проблемы (для экрана проекта)."""
+    print(f"\n--- Проблема: {problem['id']} ---")
+    print(f"Заголовок: {problem['title']}")
+    print(f"Статус: {_label_problem_status(problem)}")
+    if problem.get("description"):
+        print(f"Описание: {problem['description']}")
+    if problem.get("tags"):
+        print(f"Теги: {', '.join(problem['tags'])}")
+    print("\n(Только просмотр. Изменение/удаление проблемы — из меню работы с проблемами.)")
+
+
+def _list_project_problems(problems, indent=False):
+    prefix = "  " if indent else ""
+    for p in problems:
+        label = _label_problem_status(p)
+        print(f"{prefix}[{p['id']}] {p['title']} ({label})")
+
+
+def _show_project_screen(project):
+    """Экран проекта (v1.5.1): просмотр + отвязка/просмотр/открытие проблемы."""
+    while True:
+        problems = _projects.problems_of_project(project["id"])
+        closed = project["status"] == "done"
+        status = "закрыт" if closed else "активен"
+
+        print("\n" + "=" * 34)
+        print(f"ПРОЕКТ: {project['name']}")
+        print(f"Статус: {status}   Создан: {_format_created_date(project.get('created'))}")
+        if project.get("goal"):
+            print(f"Цель: {project['goal']}")
+        print("=" * 34)
+
+        print(f"\nПодзадач всего: {len(problems)}")
+        if problems:
+            stats = {}
+            for p in problems:
+                stats[p["status"]] = stats.get(p["status"], 0) + 1
+            for st, cnt in stats.items():
+                print(f"  {_PROBLEM_STATUS_RU.get(st, st)}: {cnt}")
+
+        print("\n--- Проблемы проекта ---")
+        if not problems:
+            print("Проблем нет. Привяжите проблемы через «6. Проекты → Привязать / отвязать проблему».")
+        else:
+            _list_project_problems(problems, indent=True)
+
+        print("\n1. Обновить")
+        print("2. Отвязать проблему" if not closed else "2. (недоступно — проект закрыт)")
+        print("3. Открыть проблему")
+        print("0. Назад")
+
+        choice = input("\nВыберите: ").strip()
+        if choice == "0":
+            return
+        elif choice == "1":
+            continue
+        elif choice == "3":
+            _open_project_problem(problems)
+        elif choice == "2":
+            if closed:
+                print("\nПроект закрыт — отвязка недоступна.")
+            else:
+                _unbind_project_problem(project)
+        else:
+            print("\nНеверный выбор.")
+
+
+def _open_project_problem(problems):
+    if not problems:
+        print("\nПроблем нет.")
+        return
+    print("\n--- Проблемы проекта ---")
+    for i, p in enumerate(problems, start=1):
+        print(f"{i}. [{_label_problem_status(p)}] {p['title']}")
+    choice = input("\nНомер проблемы (Enter — отмена): ").strip()
+    if not choice.isdigit() or not 1 <= int(choice) <= len(problems):
+        print("\nОтмена.")
+        return
+    _show_problem_detail(problems[int(choice) - 1])
+
+
+def _unbind_project_problem(project):
+    problems = _projects.problems_of_project(project["id"])
+    if not problems:
+        print("\nУ проекта нет привязанных проблем.")
+        return
+    print("\n--- Проблемы проекта (для отвязки) ---")
+    for i, p in enumerate(problems, start=1):
+        print(f"{i}. [{_label_problem_status(p)}] {p['title']}")
+    print("0. Назад")
+    choice = input("\nНомер проблемы для отвязки (Enter — отмена): ").strip()
+    if choice == "0":
+        return
+    if not choice.isdigit() or not 1 <= int(choice) <= len(problems):
+        print("\nОтмена.")
+        return
+    problem = problems[int(choice) - 1]
+    updated = _projects.bind_problem(problem["id"], None)
+    if updated is not None:
+        print(f"\nПроблема «{problem['title']}» отвязана от проекта (не удалена).")
+    else:
+        print("\nПроблема не найдена.")
+
+
 def _open_project():
     project, _ = _pick_project("\n\nНомер проекта (Enter — отмена): ")
     if project is None:
         return
-    problems = _projects.problems_of_project(project["id"])
-    solved = sum(1 for p in problems if p["status"] == "solved")
-    status = "закрыт" if project["status"] == "done" else "активен"
-    print(f"\nПроект: {project['name']} [{status}]")
-    print(f"Цель: {project['goal'] or '(не указана)'}")
-    print(f"Подзадач: {len(problems)} (решено: {solved})")
-    print("\n(Экран проекта — в v1.5.1.)")
+    _show_project_screen(project)
 
 
 def _rename_project():

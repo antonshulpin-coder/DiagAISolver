@@ -289,14 +289,6 @@ class TestProjectsCli(ProjectBase):
         self.assertIn("Проект", buf.getvalue())
         self.assertIn("подзадач: 1", buf.getvalue())
 
-    def test_open_project_stub(self):
-        pr = self._create_project("Проект")
-        buf = StringIO()
-        with patch("src.commands.input", side_effect=["3", "1", "0"]):
-            with redirect_stdout(buf):
-                commands.projects()
-        self.assertIn("v1.5.1", buf.getvalue())
-
     def test_filter_by_project(self):
         pr = self._create_project()
         p = self._create_problem("Внутри")
@@ -362,6 +354,166 @@ class TestProjectsCommandErrorHandling(ProjectBase):
         self.assertIn("Проектов пока нет", out)
         # проблема по-прежнему без проекта
         self.assertNotIn("project_id", _problems.get_problem(p["id"]))
+
+
+class TestProjectScreen(ProjectBase):
+    """Экран проекта (v1.5.1): просмотр, статистика, отвязка, навигация.
+
+    Вход: меню 6 -> «3. Открыть проект» -> номер проекта.
+    Выход: «0. Назад» на экране -> «0. Назад» в меню проектов.
+    """
+
+    def _enter_screen(self, project, exit_seq=("0", "0")):
+        buf = StringIO()
+        seq = ["3", "1", *exit_seq]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        return buf.getvalue()
+
+    def test_enter_screen_shows_header(self):
+        pr = self._create_project("Шифрование", "Секретность")
+        out = self._enter_screen(pr)
+        self.assertIn("Шифрование", out)
+        self.assertIn("активен", out)
+        self.assertIn("Секретность", out)
+
+    def test_screen_shows_created_date(self):
+        pr = self._create_project("Дата")
+        out = self._enter_screen(pr)
+        # дата в формате YYYY-MM-DD (первые 10 символов ISO-строки created)
+        self.assertIn(pr["created"][:10], out)
+
+    def test_empty_problem_list_friendly_message(self):
+        pr = self._create_project("Пустой")
+        out = self._enter_screen(pr)
+        self.assertIn("Подзадач всего: 0", out)
+        self.assertIn("Проблем нет", out)
+
+    def test_screen_lists_projects_problems(self):
+        pr = self._create_project("Проект")
+        p1 = self._create_problem("Проблема А")
+        p2 = self._create_problem("Проблема Б")
+        _projects.bind_problem(p1["id"], pr["id"])
+        _projects.bind_problem(p2["id"], pr["id"])
+        self._create_problem("Вне проекта")
+        out = self._enter_screen(pr)
+        self.assertIn(p1["id"], out)
+        self.assertIn(p1["title"], out)
+        self.assertIn(p2["id"], out)
+        self.assertIn(p2["title"], out)
+        self.assertIn("Подзадач всего: 2", out)
+        self.assertNotIn("Вне проекта", out)
+
+    def test_screen_stats_by_status(self):
+        pr = self._create_project("Статы")
+        p_new = self._create_problem("Новая")
+        p_solved = self._create_problem("Решённая")
+        _projects.bind_problem(p_new["id"], pr["id"])
+        _projects.bind_problem(p_solved["id"], pr["id"])
+        _problems.update_problem(p_solved["id"], status="solved")
+        out = self._enter_screen(pr)
+        self.assertIn("Подзадач всего: 2", out)
+        self.assertIn("новая: 1", out)
+        self.assertIn("решена: 1", out)
+
+    def test_unbind_problem_keeps_problem(self):
+        pr = self._create_project("Отвязка")
+        p = self._create_problem("Кандидат")
+        _projects.bind_problem(p["id"], pr["id"])
+        buf = StringIO()
+        seq = ["3", "1", "2", "1", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        out = buf.getvalue()
+        self.assertIn("отвязана", out)
+        # проблема НЕ удалена
+        self.assertEqual(len(_problems.get_all_problems()), 1)
+        self.assertEqual(_problems.get_problem(p["id"])["id"], p["id"])
+        # project_id стал None
+        self.assertIsNone(_problems.get_problem(p["id"])["project_id"])
+        self.assertEqual(_projects.count_project_problems(pr["id"]), 0)
+
+    def test_unbind_empty_project_reports(self):
+        pr = self._create_project("Без проблем")
+        buf = StringIO()
+        seq = ["3", "1", "2", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        self.assertIn("нет привязанных проблем", buf.getvalue())
+
+    def test_unbind_cancel_keeps_binding(self):
+        pr = self._create_project("Отмена")
+        p = self._create_problem("X")
+        _projects.bind_problem(p["id"], pr["id"])
+        buf = StringIO()
+        # экран -> 2 (отвязать) -> Enter (отмена)
+        seq = ["3", "1", "2", "", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        self.assertEqual(_problems.get_problem(p["id"])["project_id"], pr["id"])
+
+    def test_open_problem_shows_readonly_detail(self):
+        pr = self._create_project("Деталь")
+        p = self._create_problem("Показать")
+        _projects.bind_problem(p["id"], pr["id"])
+        buf = StringIO()
+        seq = ["3", "1", "3", "1", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        out = buf.getvalue()
+        self.assertIn(p["id"], out)
+        self.assertIn("Показать", out)
+        self.assertIn("Только просмотр", out)
+
+    def test_invalid_screen_choice(self):
+        pr = self._create_project("Ошибка")
+        buf = StringIO()
+        seq = ["3", "1", "9", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        self.assertIn("Неверный выбор", buf.getvalue())
+
+    def test_back_returns_to_menu(self):
+        pr = self._create_project("Выход")
+        buf = StringIO()
+        seq = ["3", "1", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        # экран показан, затем возврат к меню проектов
+        self.assertIn("ПРОЕКТ: Выход", buf.getvalue())
+
+    def test_done_project_no_unbind_action(self):
+        pr = self._create_project("Закрытый")
+        _projects.close_project(pr["id"])
+        buf = StringIO()
+        # экран -> 2 (отвязка) недоступна -> 0 (назад) -> 0 (меню)
+        seq = ["3", "1", "2", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        out = buf.getvalue()
+        self.assertIn("закрыт", out)
+        self.assertIn("отвязка недоступна", out)
+
+    def test_done_project_keeps_binding_untouched(self):
+        pr = self._create_project("Закрытый")
+        _projects.close_project(pr["id"])
+        p = self._create_problem("К")
+        _projects.bind_problem(p["id"], pr["id"])
+        buf = StringIO()
+        seq = ["3", "1", "2", "0", "0"]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        # отвязка не доступна — привязка сохранена
+        self.assertEqual(_problems.get_problem(p["id"])["project_id"], pr["id"])
 
 
 class TestProjectsMenuRouter(unittest.TestCase):
