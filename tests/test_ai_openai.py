@@ -32,6 +32,15 @@ def _mock_context_manager(response_bytes):
     return MagicMock(return_value=mock_resp)
 
 
+def _req_header(req, name):
+    """Case-insensitive header lookup over Request.header_items()."""
+    low = name.lower()
+    for key, value in req.header_items():
+        if key.lower() == low:
+            return value
+    return None
+
+
 # ── Constructor ───────────────────────────────────────────────────
 
 class TestOpenAIProviderInit(unittest.TestCase):
@@ -99,6 +108,56 @@ class TestOpenAIProviderBaseUrl(unittest.TestCase):
         p.analyze_problem({"title": "T"}, {"knowledge": [], "problems": []})
         req = mock_urlopen.call_args[0][0]
         self.assertEqual(req.full_url, "https://openrouter.ai/api/v1/chat/completions")
+
+
+# ── app identification headers (OpenRouter) ───────────────────────
+
+class TestOpenAIProviderAppHeaders(unittest.TestCase):
+
+    @patch("src.ai.openai.urllib.request.urlopen")
+    def test_default_headers_present(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_context_manager(
+            _make_response_bytes("ok")
+        )()
+        p = OpenAIProvider(api_key="sk-test")
+        p.analyze_problem({"title": "T"}, {"knowledge": [], "problems": []})
+        req = mock_urlopen.call_args[0][0]
+        self.assertEqual(
+            _req_header(req, "HTTP-Referer"),
+            "https://github.com/antonshulpin-coder/DiagAISolver",
+        )
+        self.assertEqual(_req_header(req, "X-Title"), "DiagAISolver")
+
+    @patch("src.ai.openai.urllib.request.urlopen")
+    def test_headers_override_via_constructor(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_context_manager(
+            _make_response_bytes("ok")
+        )()
+        p = OpenAIProvider(
+            api_key="sk-test",
+            app_url="https://example.org/app",
+            app_title="MyApp",
+        )
+        self.assertEqual(p.app_url, "https://example.org/app")
+        self.assertEqual(p.app_title, "MyApp")
+        p.analyze_problem({"title": "T"}, {"knowledge": [], "problems": []})
+        req = mock_urlopen.call_args[0][0]
+        self.assertEqual(_req_header(req, "HTTP-Referer"), "https://example.org/app")
+        self.assertEqual(_req_header(req, "X-Title"), "MyApp")
+
+    @patch.dict("os.environ", {"AI_APP_URL": "https://env.example/app", "AI_APP_TITLE": "EnvApp"}, clear=True)
+    def test_headers_override_via_env(self):
+        p = OpenAIProvider(api_key="sk-test")
+        self.assertEqual(p.app_url, "https://env.example/app")
+        self.assertEqual(p.app_title, "EnvApp")
+
+    def test_backward_compat_defaults(self):
+        p = OpenAIProvider(api_key="sk-test")
+        self.assertEqual(p.app_url, "https://github.com/antonshulpin-coder/DiagAISolver")
+        self.assertEqual(p.app_title, "DiagAISolver")
+        self.assertEqual(
+            p.api_url, "https://api.openai.com/v1/chat/completions"
+        )
 
 
 # ── _parse_response ───────────────────────────────────────────────

@@ -1,12 +1,12 @@
 # AI_HANDOFF.md
 
 ## Текущая версия
-**1.3.6 (endpoint/base_url фича; первое изменение кода с 1.3.0)** — 545 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + настраиваемый API endpoint (v1.3.6).
+**1.3.7 (app-identification headers для OpenRouter)** — 549 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + настраиваемый API endpoint (v1.3.6) + заголовки HTTP-Referer/X-Title (v1.3.7).
 
 ## Состояние проекта
-Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 545 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter).
+Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 549 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения `ai.app_url`/`ai.app_title` (HTTP-Referer/X-Title).
 
-**Текущий этап:** v1.3 Полировка UX диагностики (UX1 — причина одним нажатием, UX2 — история расследования, UX3 — AI-подсказка «что дальше») реализована в `src/commands.py` (код v1.3.0). Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–v1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint-фича. **Real AI smoke-test: прогон выполнен, но все шаги → 403 (OpenRouter security policy) — пункт открыт.**
+**Текущий этап:** v1.3 Полировка UX диагностики (UX1 — причина одним нажатием, UX2 — история расследования, UX3 — AI-подсказка «что дальше») реализована в `src/commands.py` (код v1.3.0). Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации. **Real AI smoke-test: прогон ранее дал 403 (OpenRouter security policy); после заголовков — на перепроверку пользователем (v1.3.7).**
 
 ## Инфраструктура репозитория (v1.3.2–v1.3.3; дополнено v1.3.6)
 
@@ -222,11 +222,12 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | v1.3.0 | Полировка UX диагностики (UX1 причина, UX2 история, UX3 подсказка) | ✅ |
 | v1.3.1–v1.3.3 | Инфраструктура/доки (коммиты по фазам, remote-бэкап, .gitignore, handoff) — код не менялся | ✅ |
 | v1.3.5 | Real AI smoke-test: скрипт + прогон (все шаги 403 — OpenRouter security policy) | ⚠️ открыт |
-| v1.3.6 | Endpoint/base_url в OpenAIProvider + AIConfig (545 тестов) | ✅ |
+| v1.3.6 | Endpoint/base_url в OpenAIProvider + AIConfig | ✅ |
+| v1.3.7 | App-identification headers (HTTP-Referer/X-Title) для OpenRouter | ✅ |
 
-## Результаты тестов (v1.3.6)
+## Результаты тестов (v1.3.7)
 ```
-545 passed in 6.02s
+549 passed in 2.76s
 ```
 - test_problems.py: 43
 - test_solve.py: 48

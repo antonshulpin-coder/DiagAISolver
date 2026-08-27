@@ -31,6 +31,8 @@ class TestAIConfigDefaults(unittest.TestCase):
         self.assertEqual(cfg.model, "gpt-4o-mini")
         self.assertEqual(cfg.timeout, 30)
         self.assertEqual(cfg.base_url, "https://api.openai.com/v1")
+        self.assertEqual(cfg.app_url, "https://github.com/antonshulpin-coder/DiagAISolver")
+        self.assertEqual(cfg.app_title, "DiagAISolver")
 
 
 # ── load_config ───────────────────────────────────────────────────
@@ -111,7 +113,7 @@ class TestGetAIProvider(unittest.TestCase):
         self.assertIsInstance(p, NullProvider)
 
     def test_enabled_openai_returns_openai_provider(self):
-        cfg = AIConfig(enabled=True, provider="openai", model="gpt-4o", timeout=15, base_url="https://openrouter.ai/api/v1")
+        cfg = AIConfig(enabled=True, provider="openai", model="gpt-4o", timeout=15, base_url="https://openrouter.ai/api/v1", app_url="https://example.org/app", app_title="MyApp")
         with patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}, clear=False):
             p = get_ai_provider(config=cfg)
         self.assertEqual(type(p).__name__, "OpenAIProvider")
@@ -119,6 +121,8 @@ class TestGetAIProvider(unittest.TestCase):
         self.assertEqual(p.timeout, 15)
         self.assertEqual(p.base_url, "https://openrouter.ai/api/v1")
         self.assertEqual(p.api_url, "https://openrouter.ai/api/v1/chat/completions")
+        self.assertEqual(p.app_url, "https://example.org/app")
+        self.assertEqual(p.app_title, "MyApp")
 
     def test_enabled_openai_no_key_returns_openai_provider(self):
         cfg = AIConfig(enabled=True, provider="openai")

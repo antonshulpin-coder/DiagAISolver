@@ -462,7 +462,9 @@ config/
         "model": "gpt-4o-mini",
         "max_completion_tokens": 1000,
         "timeout_seconds": 30,
-        "base_url": "https://api.openai.com/v1"
+        "base_url": "https://api.openai.com/v1",
+        "app_url": "https://github.com/antonshulpin-coder/DiagAISolver",
+        "app_title": "DiagAISolver"
     }
 }
 ```
@@ -471,6 +473,12 @@ config/
 (`https://api.openai.com/v1`). Можно переопределить под иной совместимый хост
 (например, `https://openrouter.ai/api/v1` для OpenRouter). Итоговый URL вызова —
 `base_url + "/chat/completions"`.
+
+`app_url` и `app_title` — заголовки идентификации приложения (`HTTP-Referer` и
+`X-Title`), которые OpenRouter рекомендует (а при некоторых политиках — требует)
+для 403 `"Access denied by security policy"`. По умолчанию указывают на этот
+репозиторий; переопределяются также через env `AI_APP_URL` / `AI_APP_TITLE`.
+Заголовки отправляются всегда (для прямого OpenAI безвредны).
 
 ### API ключ — ТОЛЬКО переменная окружения
 

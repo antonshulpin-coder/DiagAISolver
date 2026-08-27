@@ -24,6 +24,8 @@ class OpenAIProvider:
     """
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
+    DEFAULT_APP_URL = "https://github.com/antonshulpin-coder/DiagAISolver"
+    DEFAULT_APP_TITLE = "DiagAISolver"
     API_URL = "https://api.openai.com/v1/chat/completions"  # для обратной совместимости
 
     def __init__(
@@ -32,12 +34,16 @@ class OpenAIProvider:
         model: str = "gpt-4o-mini",
         timeout: int = 30,
         base_url: str | None = None,
+        app_url: str | None = None,
+        app_title: str | None = None,
     ):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.model = model
         self.timeout = timeout
         self.base_url = (base_url or self.DEFAULT_BASE_URL).rstrip("/")
         self.api_url = f"{self.base_url}/chat/completions"
+        self.app_url = app_url or os.environ.get("AI_APP_URL") or self.DEFAULT_APP_URL
+        self.app_title = app_title or os.environ.get("AI_APP_TITLE") or self.DEFAULT_APP_TITLE
 
     def _chat(self, user_content: str) -> AIResponse:
         """Общий механизм: отправка одного сообщения и получение ответа."""
@@ -59,6 +65,8 @@ class OpenAIProvider:
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
+                "HTTP-Referer": self.app_url,
+                "X-Title": self.app_title,
             },
         )
 

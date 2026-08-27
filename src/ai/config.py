@@ -15,6 +15,8 @@ AI_DEFAULTS = {
     "model": "gpt-4o-mini",
     "timeout": 30,
     "base_url": "https://api.openai.com/v1",
+    "app_url": "https://github.com/antonshulpin-coder/DiagAISolver",
+    "app_title": "DiagAISolver",
 }
 
 
@@ -26,6 +28,8 @@ class AIConfig:
     model: str = "gpt-4o-mini"
     timeout: int = 30
     base_url: str = "https://api.openai.com/v1"
+    app_url: str = "https://github.com/antonshulpin-coder/DiagAISolver"
+    app_title: str = "DiagAISolver"
 
 
 def load_config(settings_path: Path | str | None = None) -> AIConfig:
@@ -52,6 +56,8 @@ def load_config(settings_path: Path | str | None = None) -> AIConfig:
         model=str(ai_raw.get("model", AI_DEFAULTS["model"])),
         timeout=int(ai_raw.get("timeout", AI_DEFAULTS["timeout"])),
         base_url=str(ai_raw.get("base_url", AI_DEFAULTS["base_url"])),
+        app_url=str(ai_raw.get("app_url", AI_DEFAULTS["app_url"])),
+        app_title=str(ai_raw.get("app_title", AI_DEFAULTS["app_title"])),
     )
 
 
@@ -75,6 +81,8 @@ def get_ai_provider(config: AIConfig | None = None, api_key: str | None = None):
                 model=config.model,
                 timeout=config.timeout,
                 base_url=config.base_url,
+                app_url=config.app_url,
+                app_title=config.app_title,
             )
 
         return NullProvider()

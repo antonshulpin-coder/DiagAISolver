@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## v1.3.7 — Заголовки идентификации приложения для OpenRouter
+
+### Что сделано
+- `src/ai/openai.py`: при каждом запросе отправляются заголовки
+  - `HTTP-Referer` (по умолчанию `https://github.com/antonshulpin-coder/DiagAISolver`),
+  - `X-Title` (по умолчанию `DiagAISolver`).
+  Заголовки шлются всегда (для `api.openai.com` безвредны), без ветвления по `base_url`.
+  Переопределение: через конструктор `app_url`/`app_title`, конфиг `ai.app_url`/`ai.app_title` (settings.json) или env `AI_APP_URL`/`AI_APP_TITLE`.
+- `src/ai/config.py`: `AIConfig.app_url`/`app_title`, `AI_DEFAULTS`, `load_config`, `get_ai_provider`.
+- Тесты: `tests/test_ai_openai.py` +4 (заголовки по умолчанию в запросе, переопределение через конструктор и env, обратная совместимость); `tests/test_ai_config.py` base_url/app-поля (defaults, propagation).
+- Полный набор: **549 passed** (545 + 4 новых).
+
+### Цель
+Устранить возможную причину 403 `"Access denied by security policy"` от OpenRouter — отсутствие рекомендованных заголовков идентификации приложения. Smoke-скрипт готов к перепроверке пользователем:
+`set OPENAI_API_KEY=sk-...` + `set OPENAI_BASE_URL=https://openrouter.ai/api/v1` + `python smoke_real_ai.py`.
+
+### Версия
+- `pyproject.toml` → **1.3.7**.
+
+---
+
 ## v1.3.5/v1.3.6 — Real AI smoke-test + настраиваемый endpoint
 
 ### v1.3.5 — инструмент реального smoke-теста
