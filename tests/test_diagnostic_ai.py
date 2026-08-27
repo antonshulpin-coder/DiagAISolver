@@ -14,6 +14,7 @@ from src.ai.context import (
 from src.ai.openai import (
     OpenAIProvider,
     _clean_suggestions,
+    _strip_markdown_fence,
     _parse_hypotheses_response,
     _parse_next_check_response,
 )
@@ -243,6 +244,48 @@ class TestCleanSuggestions(unittest.TestCase):
         self.assertEqual(result, ["x"])
 
 
+class TestStripMarkdownFence(unittest.TestCase):
+
+    def test_removes_fence_with_json_lang(self):
+        self.assertEqual(
+            _strip_markdown_fence('```json\n{"a": 1}\n```'),
+            '{"a": 1}',
+        )
+
+    def test_removes_fence_no_lang(self):
+        self.assertEqual(
+            _strip_markdown_fence('```\n[1, 2, 3]\n```'),
+            "[1, 2, 3]",
+        )
+
+    def test_lang_case_insensitive(self):
+        self.assertEqual(
+            _strip_markdown_fence('```JSON\n{"ok": true}\n```'),
+            '{"ok": true}',
+        )
+
+    def test_fence_with_surrounding_whitespace(self):
+        self.assertEqual(
+            _strip_markdown_fence('\n\n```json\n{"s": "x"}\n```\n'),
+            '{"s": "x"}',
+        )
+
+    def test_broken_fence_only_opener_returns_as_is(self):
+        text = '```json\n{"a": 1,'
+        self.assertEqual(_strip_markdown_fence(text), text)
+
+    def test_broken_fence_only_closer_returns_as_is(self):
+        text = '{"a": 1}\n```'
+        self.assertEqual(_strip_markdown_fence(text), text)
+
+    def test_clean_json_without_fence_unchanged(self):
+        text = '{"a": 1}'
+        self.assertEqual(_strip_markdown_fence(text), text)
+
+    def test_empty_string(self):
+        self.assertEqual(_strip_markdown_fence(""), "")
+
+
 class TestParseHypothesesResponse(unittest.TestCase):
 
     def test_json_with_suggestions(self):
@@ -272,6 +315,23 @@ class TestParseHypothesesResponse(unittest.TestCase):
         suggestions, _ = _parse_hypotheses_response("not json { broken")
         self.assertIsInstance(suggestions, list)
 
+    def test_fenced_json_suggestions_clean_no_fence_leak(self):
+        content = '```json\n' + json.dumps({
+            "suggestions": ["Причина 1", "Причина 2"],
+            "explanation": "Разбор",
+        }) + '\n```'
+        suggestions, explanation = _parse_hypotheses_response(content)
+        self.assertEqual(suggestions, ["Причина 1", "Причина 2"])
+        self.assertEqual(explanation, "Разбор")
+        for suggestion in suggestions:
+            self.assertNotIn("```", suggestion)
+
+    def test_fenced_non_json_fallback_strips_opener(self):
+        content = '```json\n- Причина 1\n- Причина 2\n```'
+        suggestions, explanation = _parse_hypotheses_response(content)
+        self.assertEqual(suggestions, ["Причина 1", "Причина 2"])
+        self.assertNotIn("```", explanation)
+
 
 class TestParseNextCheckResponse(unittest.TestCase):
 
@@ -291,6 +351,22 @@ class TestParseNextCheckResponse(unittest.TestCase):
     def test_empty(self):
         check, alternatives = _parse_next_check_response("")
         self.assertEqual(check, "")
+        self.assertEqual(alternatives, [])
+
+    def test_fenced_json(self):
+        content = '```json\n' + json.dumps({
+            "check": "Проверить модуль x",
+            "alternatives": ["Альт 1", "Альт 2"],
+        }) + '\n```'
+        check, alternatives = _parse_next_check_response(content)
+        self.assertEqual(check, "Проверить модуль x")
+        self.assertEqual(alternatives, ["Альт 1", "Альт 2"])
+        self.assertNotIn("```", check)
+
+    def test_fenced_broken_fallback(self):
+        content = '```json\n{"check": "x"'
+        check, alternatives = _parse_next_check_response(content)
+        self.assertTrue(check)
         self.assertEqual(alternatives, [])
 
 

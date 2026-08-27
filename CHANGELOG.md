@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## v1.3.9 — Фикс парсинга markdown-фенсов (устойчивость к реальным ответам)
+
+### Проблема (обнаружена реальным smoke v1.3.8)
+OpenRouter/OpenAI часто оборачивают JSON в markdown-фенсы `` ```json ... ``` ``. Парсеры `_parse_hypotheses_response`/`_parse_next_check_response` фенс не снимали → в suggestions утекала мусорная строка `` ```json ``. Все 549 тестов не поймали, т.к. фейки возвращали чистый JSON.
+
+### Изменения
+- `src/ai/openai.py`: новый приватный хелпер `_strip_markdown_fence(text)` — снимает фенс `` ``` ``` `` (учитывает подпись языка: json/JSON/пусто; пробелы вокруг); при отсутствии целостного фенса возвращает текст без изменений.
+- Хелпер применён в обоих парсерах перед существующей JSON-логикой; fallback-поведение при genuinely malformed JSON сохранено (ошибки не маскируются).
+- Старые 5 методов провайдера (`analyze_problem`, `suggest_solution`, `generate_notes`, `answer_question`, `generate_knowledge`) JSON из ответа не парсят — правки не требовались.
+- Сигнатуры парсеров и `diagnostic.py`/`commands.py`/`solve.py` не менялись.
+
+### Тесты
+- Новые: `TestStripMarkdownFence` (8 unit-тестов хелпера) + фенс-кейсы в обоих парсерах (fenced JSON → чистые suggestions без `` ``` ``; fenced не-JSON → fallback без `` ```json `` в выводе; битый фенс → fallback).
+- Регресс: чистый JSON без фенса и все прежние malformed-тесты зелёные без правок.
+- Итог: **561 passed** (было 549, +12).
+
+### Версия
+- `pyproject.toml` → **1.3.9** (изменение кода).
+
+---
+
 ## v1.3.8 — Real AI smoke-test: успех (доки/статус, код не менялся)
 
 ### Результат реального прогона (пользователь, OpenRouter)

@@ -170,12 +170,33 @@ def _clean_suggestions(items) -> list[str]:
     return result
 
 
+def _strip_markdown_fence(text: str) -> str:
+    """Снимает markdown-фенс ```...```, если текст полностью обёрнут в него.
+
+    Учитывает возможную подпись языка после открывающего ``` (json, JSON, пусто) —
+    она просто отбрасывается вместе с открывающей строкой.
+    Если целостного фенса нет (например, только открывающий или только
+    закрывающий) — текст возвращается без изменений (то есть «как есть»).
+    """
+    s = (text or "").strip()
+    if not (s.startswith("```") and s.strip().endswith("```")):
+        return s
+    lines = s.splitlines()
+    if len(lines) < 2:
+        return s
+    body = lines[1:]
+    if body and body[-1].strip() == "```":
+        body = body[:-1]
+    return "\n".join(body).strip()
+
+
 def _parse_hypotheses_response(content: str) -> tuple[list[str], str]:
     """Разбирает ответ suggest_hypotheses: (suggestions, explanation).
 
     Пытается распарсить JSON; при неудаче берёт непустые строки как гипотезы.
+    Перед парсингом снимается markdown-фенс, если модель вернула ```json ... ```.
     """
-    raw = content.strip()
+    raw = _strip_markdown_fence(content)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -207,8 +228,11 @@ def _parse_hypotheses_response(content: str) -> tuple[list[str], str]:
 
 
 def _parse_next_check_response(content: str) -> tuple[str, list[str]]:
-    """Разбирает ответ suggest_next_check: (check, alternatives)."""
-    raw = content.strip()
+    """Разбирает ответ suggest_next_check: (check, alternatives).
+
+    Перед парсингом снимается markdown-фенс, если модель вернула ```json ... ```.
+    """
+    raw = _strip_markdown_fence(content)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:

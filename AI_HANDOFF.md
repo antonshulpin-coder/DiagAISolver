@@ -1,12 +1,12 @@
 # AI_HANDOFF.md
 
 ## Текущая версия
-**1.3.7 (код) / 1.3.8 (статус: Real AI smoke-test успешен)** — 549 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + настраиваемый API endpoint (v1.3.6) + заголовки HTTP-Referer/X-Title (v1.3.7). Real AI smoke-test на живом ключе — **пройден (3/3 OK на OpenRouter)**.
+**1.3.9 — Фикс парсинга markdown-фенсов** — 561 тест. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + настраиваемый API endpoint (v1.3.6) + заголовки HTTP-Referer/X-Title (v1.3.7). Real AI smoke-test на живом ключе — **пройден (3/3 OK на OpenRouter)**; найденный smoke-ом баг парсинга фенсов **исправлен (v1.3.9)**.
 
 ## Состояние проекта
-Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 549 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения `ai.app_url`/`ai.app_title` (HTTP-Referer/X-Title).
+Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 561 тест проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения `ai.app_url`/`ai.app_title` (HTTP-Referer/X-Title); парсеры диагностики снимают markdown-фенс `` ```json ``` `` (`_strip_markdown_fence`).
 
-**Текущий этап:** v1.3 Полировка UX диагностики (UX1 — причина одним нажатием, UX2 — история расследования, UX3 — AI-подсказка «что дальше») реализована в `src/commands.py` (код v1.3.0). Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации. **Real AI smoke-test: ЗАКРЫТ (v1.3.8) — 3/3 OK на OpenRouter; cause 403 (его роль закрывал) устранили app-заголовки.**
+**Текущий этап:** v1.3 Полировка UX диагностики (UX1 — причина одним нажатием, UX2 — история расследования, UX3 — AI-подсказка «что дальше») реализована в `src/commands.py` (код v1.3.0). Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации; **v1.3.9 — фикс парсинга markdown-фенсов (устранён баг, найденный smoke v1.3.8)**.
 
 ## Инфраструктура репозитория (v1.3.2–v1.3.3; дополнено v1.3.6)
 
@@ -225,10 +225,11 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | v1.3.6 | Endpoint/base_url в OpenAIProvider + AIConfig | ✅ |
 | v1.3.7 | App-identification headers (HTTP-Referer/X-Title) для OpenRouter | ✅ |
 | v1.3.8 | Real AI smoke-test успешен: 3/3 OK на OpenRouter (доки, код не менялся) | ✅ |
+| v1.3.9 | Фикс парсинга markdown-фенсов `_strip_markdown_fence` в парсерах диагностики | ✅ |
 
-## Результаты тестов (v1.3.7)
+## Результаты тестов (v1.3.9)
 ```
-549 passed in 2.76s
+561 passed in 3.25s
 ```
 - test_problems.py: 43
 - test_solve.py: 48
@@ -381,7 +382,7 @@ src/commands.py               — CLI, auto-detect provider
 
 ## Следующий этап
 
-Кодовая база: v1.3 UX-полировка + v1.3.6 endpoint/base_url + v1.3.7 app-заголовки (549 тестов) реализованы. **Real AI smoke-test ЗАКРЫТ (v1.3.8)** — 3/3 OK на OpenRouter; причина 403 (отсутствие app-идентификации) устранена. Замечание вне кода: парсеры диагностики слабо устойчивы к JSON-ответам в markdown-фенсах (```` ```json ````) — при желании улучшить отдельной задачей.
+Кодовая база: v1.3 UX-полировка + v1.3.6 endpoint/base_url + v1.3.7 app-заголовки + v1.3.9 фенс-фикс (561 тест) реализованы. **Real AI smoke-test ЗАКРЫТ (v1.3.8)** — 3/3 OK на OpenRouter; причина 403 (отсутствие app-идентификации) устранена. **Баг от v1.3.8 (фенсы) зафиксирован в v1.3.9**: парсеры диагностики снимают markdown-фенс `` ```json ``` `` через `_strip_markdown_fence`.
 
 Следующий этап: **Ожидает решения пользователя**.
 
