@@ -1,12 +1,38 @@
 # AI_HANDOFF.md
 
 ## Текущая версия
-**1.2.4 (PHASE 4 DONE)** — AI Diagnostic SOLVE: данные расследования включены в AI-контекст Knowledge Record
+**1.3.0 (UX POLISH DONE)** — Полировка UX диагностики: причина одним нажатием, история расследования, AI-подсказка «что дальше»
 
 ## Состояние проекта
-Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 521 тест проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content).
+Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 541 тест проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content).
 
-**Текущий этап:** v1.2 AI Diagnostic SOLVE. Phase 1 (ядро `src/diagnostic.py`), Phase 2 (AI-слой), Phase 3 (интеграция CLI) и Phase 4 (данные расследования в AI-контексте) реализованы. Архитектурный план — `docs/DIAGNOSTIC_DESIGN.md`. **v1.2 полностью закрыта**; следующий этап — v1.3 (по решению пользователя).
+**Текущий этап:** v1.3 Полировка UX диагностики (UX1 — причина одним нажатием, UX2 — история расследования, UX3 — AI-подсказка «что дальше») реализована в `src/commands.py` (v1.3.0). Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; следующий этап — по решению пользователя.
+
+## v1.3 — Полировка UX диагностики (v1.3.0)
+
+### UX1: подтверждение причины одним нажатием
+- `src/commands.py` → новый `_confirm_cause(problem)`, вызывается из пункта 4 цикла.
+- ровно одна confirmed-гипотеза → показ текста, принять по Enter/`y`;
+- несколько confirmed → нумерованный выбор;
+- нет confirmed → прежний ручной ввод без изменений; отказ → ручной ввод.
+- confirmed-гипотезы берутся из полной сессии `problem["diagnostic"]` (компактный контекст их не отдаёт).
+
+### UX2: история расследования в состоянии
+- `_show_diagnostic_state`: секция «История проверок» (done-шаги: `[id] описание → результат → затронутая гипотеза (статус)`) и «Проверено/Отклонено» (терминальные гипотезы).
+- пустая история → блоки не выводятся; лимит показа `_DIAG_HISTORY_LIMIT = 6` + «… и ещё N».
+
+### UX3: AI-подсказка «что дальше»
+- новый пункт меню «5. Подсказка «что дальше»» (номера 1–4, 0 не менялись);
+- условие: есть открытые гипотезы И нет pending-шагов; иначе «Подсказка недоступна сейчас» без вызова AI;
+- reuse `suggest_next_check` + `get_diagnostic_context`; y → `add_check` с обработкой «Выполнили уже?»; ошибки AI → информативное сообщение, graceful.
+
+### Изоляция / ограничения
+- Изменён только `src/commands.py` + новый тест-файл. Ядро (`diagnostic.py`, `solve.py`, `problems.py`) и AI-слой не тронуты.
+- Номера существующих пунктов меню и старое поведение сохранены (регресс-тесты зелёные без правок).
+
+### Тесты
+- `tests/test_diagnostic_ux.py` — **20 тестов** (UX1: 9, UX2: 5, UX3: 6).
+- Полный набор: **541 passed** (521 + 20 новых).
 
 ## v1.2 Phase 4 — Данные расследования в AI-контексте (v1.2.4)
 
@@ -182,10 +208,11 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | v1.2.2 | AI Diagnostic SOLVE Phase 2 (AI-слой) | ✅ |
 | v1.2.3 | AI Diagnostic SOLVE Phase 3 (интеграция CLI) | ✅ |
 | v1.2.4 | AI Diagnostic SOLVE Phase 4 (данные расследования в AI-контексте) | ✅ |
+| v1.3.0 | Полировка UX диагностики (UX1 причина, UX2 история, UX3 подсказка) | ✅ |
 
-## Результаты тестов (v1.2.4)
+## Результаты тестов (v1.3.0)
 ```
-521 passed in 2.95s
+541 passed in 3.41s
 ```
 - test_problems.py: 43
 - test_solve.py: 48
@@ -201,6 +228,7 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 - test_diagnostic_ai.py: 62
 - test_diagnostic_cli.py: 18
 - test_diagnostic_ai_context.py: 15
+- test_diagnostic_ux.py: 20
 
 ## Что реализовано в v1.0 Phase 4
 
@@ -324,6 +352,8 @@ src/commands.py               — CLI, auto-detect provider
 | `tests/test_diagnostic_cli.py` | Новый: 18 тестов (v1.2.3) |
 | `src/solve.py` | +секция «Расследование» (v1.2.4): _build_knowledge_text(+diagnostic_context=None), новый _build_investigation_text; импорт MAX_SEARCH_RESULTS. Остальной solve.py/public API не менялись |
 | `tests/test_diagnostic_ai_context.py` | Новый: 15 тестов (v1.2.4) |
+| `src/commands.py` | +UX-полировка (v1.3.0): _confirm_cause (UX1), история в _show_diagnostic_state (UX2, _DIAG_HISTORY_LIMIT), _diagnostic_ai_hint + пункт меню 5 (UX3). Ядро/AI-слой не менялись |
+| `tests/test_diagnostic_ux.py` | Новый: 20 тестов (v1.3.0) |
 
 ## Ограничения
 
@@ -335,12 +365,12 @@ src/commands.py               — CLI, auto-detect provider
 
 ## Следующий этап
 
-v1.2 AI Diagnostic SOLVE полностью реализован (v1.2.4, 521 тест).
-Следующий этап: **v1.3 — Полировка UX диагностики** (направление согласовано):
-- UX1: подтверждение причины одним нажатием — если есть confirmed-гипотеза, item 4 цикла предлагает её текст как причину (одно нажатие принимает); при нескольких confirmed — выбор из вариантов.
-- UX2: история расследования — в `_show_diagnostic_state` показывать выполненные шаги (описание → результат → статус затронутой гипотезы), не только open/pending.
-- UX3: AI-подсказка «что дальше» — пункт в цикле, reuse `suggest_next_check` на основе `get_diagnostic_context` сессии.
-Ограничения: diagnostic.py/solve.py/problems.py/AI-слой не менять; существующие номера пунктов меню и старое поведение сохранить; ошибки AI → graceful fallback. НЕ начинать без явной команды.
+v1.3 Полировка UX диагностики полностью реализован (v1.3.0, 541 тест):
+- UX1: подтверждение причины одним нажатием (`_confirm_cause`).
+- UX2: история расследования в `_show_diagnostic_state` (done-шаги + «Проверено/Отклонено»).
+- UX3: AI-подсказка «что дальше» (пункт меню 5, `_diagnostic_ai_hint`).
+
+Следующий этап: **по решению пользователя** (v1.4 или иное). Возможные направления: диагностика в отчёте solve, refactoring/стабилизация (lint/type-check, чистка TODO), rebuild AI-ответов диагностики. НЕ начинать без явной команды.
 
 Не переходить дальше v1.3 без явной команды и согласованного ТЗ.
 

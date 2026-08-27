@@ -3,5 +3,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# Personal notes remain local and are not uploaded to a repository.
+# Personal data remains local and is not uploaded to a repository.
 data/notes.json
+data/problems.json
+data/*_test.json
