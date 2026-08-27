@@ -4,6 +4,7 @@
     "enabled": false,
     "provider": "openai",
     "model": "gpt-4o-mini",
-    "timeout": 30
+    "timeout": 30,
+    "base_url": "https://api.openai.com/v1"
   }
 }

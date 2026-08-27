@@ -461,10 +461,16 @@ config/
         "provider": "openai",
         "model": "gpt-4o-mini",
         "max_completion_tokens": 1000,
-        "timeout_seconds": 30
+        "timeout_seconds": 30,
+        "base_url": "https://api.openai.com/v1"
     }
 }
 ```
+
+`base_url` — базовый URL OpenAI-совместимого API; по умолчанию официальный OpenAI
+(`https://api.openai.com/v1`). Можно переопределить под иной совместимый хост
+(например, `https://openrouter.ai/api/v1` для OpenRouter). Итоговый URL вызова —
+`base_url + "/chat/completions"`.
 
 ### API ключ — ТОЛЬКО переменная окружения
 

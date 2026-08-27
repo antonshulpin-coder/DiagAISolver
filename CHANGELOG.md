@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## v1.3.5/v1.3.6 — Real AI smoke-test + настраиваемый endpoint
+
+### v1.3.5 — инструмент реального smoke-теста
+- Новый `smoke_real_ai.py` (в корне, не в `src/`): последовательный прогон `format_knowledge`, `suggest_hypotheses`, `suggest_next_check` на демо-проблеме.
+- Ключ читается ТОЛЬКО из `OPENAI_API_KEY`; вывод маскируется (`sk-***last4`), ответы обрезаются до 100 символов; изоляция `data/problems.json` (хэш до/после); идемпотентен, в `data/` ничего не пишет.
+- **Реальный прогон: все 3 шага → HTTP 403.** Диагноз: ключ `sk-or-v1-...` (OpenRouter) отклонён и на `api.openai.com`, и на OpenRouter; на OpenRouter тело ошибки `"Access denied by security policy."` — блокировка по политике безопасности аккаунта/ключа, НЕ по коду. Основание: не 401 (ключ), не 402 (кредиты). **Пункт Real AI smoke-test остаётся открытым** до решения на стороне провайдера.
+
+### v1.3.6 — настраиваемый API endpoint (base_url)
+- `src/ai/openai.py`: `OpenAIProvider(base_url=...)` (по умолчанию `https://api.openai.com/v1`); URL = `base_url + "/chat/completions"`. Поддержана правка `_chat` на `self.api_url`.
+- `src/ai/config.py`: `AIConfig.base_url`, `AI_DEFAULTS["base_url"]`, `load_config` и `get_ai_provider` передают `base_url` в провайдер.
+- `smoke_real_ai.py`: чтение `OPENAI_BASE_URL` (например `https://openrouter.ai/api/v1`) для перепроверки.
+- Тесты: `tests/test_ai_openai.py` +4 (default/custom/trailing-slash/URL), `tests/test_ai_config.py` base_url (defaults/fill/provider).
+- Полный набор: **545 passed** (541 + 4 новых).
+- Код совместим назад: повтор по умолчанию = прежнее поведение (api.openai.com).
+
+### Версия
+- `pyproject.toml` → **1.3.6** (первое изменение кода с 1.3.0; v1.3.1–1.3.5 код не трогали).
+
+---
+
 ## v1.3.2/v1.3.3 — Инфраструктура репозитория и доки
 
 ### v1.3.2 — remote-бэкап
