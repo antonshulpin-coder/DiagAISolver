@@ -1,3 +1,9 @@
 {
-  "academy_root": "G:\\Academy\\Academy-Marketing"
+  "academy_root": "G:\\Academy\\Academy-Marketing",
+  "ai": {
+    "enabled": false,
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "timeout": 30
+  }
 }

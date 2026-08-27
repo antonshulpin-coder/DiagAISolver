@@ -1,4 +1,4 @@
-from src.commands import learn, solve, build, knowledge
+from src.commands import learn, solve_flow, build, knowledge
 
 
 def route(choice):
@@ -6,7 +6,7 @@ def route(choice):
         learn()
 
     elif choice == "2":
-        solve()
+        solve_flow()
 
     elif choice == "3":
         build()
@@ -19,6 +19,6 @@ def route(choice):
         return False
 
     else:
-        print("\n❌ Неверный пункт.")
+        print("\n! Неверный пункт.")
 
     return True
