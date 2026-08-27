@@ -17,19 +17,27 @@ from src.ai.types import AIResponse
 
 
 class OpenAIProvider:
-    """Провайдер для OpenAI API через stdlib (без SDK)."""
+    """Провайдер для OpenAI-совместимого API через stdlib (без SDK).
 
-    API_URL = "https://api.openai.com/v1/chat/completions"
+    Поддерживает переопределение base_url (например, OpenRouter).
+    По умолчанию — официальный API OpenAI.
+    """
+
+    DEFAULT_BASE_URL = "https://api.openai.com/v1"
+    API_URL = "https://api.openai.com/v1/chat/completions"  # для обратной совместимости
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str = "gpt-4o-mini",
         timeout: int = 30,
+        base_url: str | None = None,
     ):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.model = model
         self.timeout = timeout
+        self.base_url = (base_url or self.DEFAULT_BASE_URL).rstrip("/")
+        self.api_url = f"{self.base_url}/chat/completions"
 
     def _chat(self, user_content: str) -> AIResponse:
         """Общий механизм: отправка одного сообщения и получение ответа."""
@@ -46,7 +54,7 @@ class OpenAIProvider:
         }).encode("utf-8")
 
         req = urllib.request.Request(
-            self.API_URL,
+            self.api_url,
             data=payload,
             headers={
                 "Content-Type": "application/json",

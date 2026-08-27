@@ -72,6 +72,35 @@ class TestOpenAIProviderInit(unittest.TestCase):
         self.assertEqual(p.timeout, 60)
 
 
+# ── base_url / endpoint ───────────────────────────────────────────
+
+class TestOpenAIProviderBaseUrl(unittest.TestCase):
+
+    def test_default_base_url(self):
+        p = OpenAIProvider(api_key="k")
+        self.assertEqual(p.base_url, "https://api.openai.com/v1")
+        self.assertEqual(p.api_url, "https://api.openai.com/v1/chat/completions")
+
+    def test_custom_base_url(self):
+        p = OpenAIProvider(api_key="k", base_url="https://openrouter.ai/api/v1")
+        self.assertEqual(p.base_url, "https://openrouter.ai/api/v1")
+        self.assertEqual(p.api_url, "https://openrouter.ai/api/v1/chat/completions")
+
+    def test_base_url_trailing_slash_stripped(self):
+        p = OpenAIProvider(api_key="k", base_url="https://openrouter.ai/api/v1/")
+        self.assertEqual(p.api_url, "https://openrouter.ai/api/v1/chat/completions")
+
+    @patch("src.ai.openai.urllib.request.urlopen")
+    def test_request_uses_custom_endpoint(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_context_manager(
+            _make_response_bytes("ok")
+        )()
+        p = OpenAIProvider(api_key="sk-test", base_url="https://openrouter.ai/api/v1")
+        p.analyze_problem({"title": "T"}, {"knowledge": [], "problems": []})
+        req = mock_urlopen.call_args[0][0]
+        self.assertEqual(req.full_url, "https://openrouter.ai/api/v1/chat/completions")
+
+
 # ── _parse_response ───────────────────────────────────────────────
 
 class TestParseResponse(unittest.TestCase):

@@ -30,6 +30,7 @@ class TestAIConfigDefaults(unittest.TestCase):
         self.assertEqual(cfg.provider, "openai")
         self.assertEqual(cfg.model, "gpt-4o-mini")
         self.assertEqual(cfg.timeout, 30)
+        self.assertEqual(cfg.base_url, "https://api.openai.com/v1")
 
 
 # ── load_config ───────────────────────────────────────────────────
@@ -44,6 +45,7 @@ class TestLoadConfig(unittest.TestCase):
                 "provider": "openai",
                 "model": "gpt-4o",
                 "timeout": 60,
+                "base_url": "https://openrouter.ai/api/v1",
             },
         })
         cfg = load_config(SETTINGS_TEST)
@@ -51,6 +53,7 @@ class TestLoadConfig(unittest.TestCase):
         self.assertEqual(cfg.provider, "openai")
         self.assertEqual(cfg.model, "gpt-4o")
         self.assertEqual(cfg.timeout, 60)
+        self.assertEqual(cfg.base_url, "https://openrouter.ai/api/v1")
         _clean()
 
     def test_missing_file_returns_defaults(self):
@@ -90,6 +93,7 @@ class TestLoadConfig(unittest.TestCase):
         self.assertEqual(cfg.provider, "openai")
         self.assertEqual(cfg.model, "gpt-4o-mini")
         self.assertEqual(cfg.timeout, 30)
+        self.assertEqual(cfg.base_url, "https://api.openai.com/v1")
         _clean()
 
     def test_none_path_uses_default(self):
@@ -107,12 +111,14 @@ class TestGetAIProvider(unittest.TestCase):
         self.assertIsInstance(p, NullProvider)
 
     def test_enabled_openai_returns_openai_provider(self):
-        cfg = AIConfig(enabled=True, provider="openai", model="gpt-4o", timeout=15)
+        cfg = AIConfig(enabled=True, provider="openai", model="gpt-4o", timeout=15, base_url="https://openrouter.ai/api/v1")
         with patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}, clear=False):
             p = get_ai_provider(config=cfg)
         self.assertEqual(type(p).__name__, "OpenAIProvider")
         self.assertEqual(p.model, "gpt-4o")
         self.assertEqual(p.timeout, 15)
+        self.assertEqual(p.base_url, "https://openrouter.ai/api/v1")
+        self.assertEqual(p.api_url, "https://openrouter.ai/api/v1/chat/completions")
 
     def test_enabled_openai_no_key_returns_openai_provider(self):
         cfg = AIConfig(enabled=True, provider="openai")
