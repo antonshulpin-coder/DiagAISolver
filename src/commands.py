@@ -1,4 +1,7 @@
-﻿from src.academy import browse_academy
+﻿from pathlib import Path
+from datetime import datetime
+
+from src.academy import browse_academy
 from src.storage import (
     create_record,
     get_all_records,
@@ -1008,3 +1011,112 @@ def knowledge():
         else:
             print("\nНеверный выбор.")
             input("\nНажмите Enter...")
+
+
+# ── ЭКСПОРТ И БЭКАП (только чтение хранилища) ─────────────────────
+
+EXPORT_DIR = Path(__file__).resolve().parents[1] / "export"
+BACKUP_DIR = Path(__file__).resolve().parents[1] / "backup"
+
+
+def _problems_to_markdown(problems) -> str:
+    """Формирует markdown-представление всех проблем (только чтение).
+
+    Для каждой проблемы: статус, описание, решение (если есть), история
+    расследования (единый формат с отчётом solve через
+    _format_investigation_history). Отсутствующие секции пропускаются.
+    """
+    chunks = []
+    for p in problems:
+        title = p.get("title") or "(без названия)"
+        status = p.get("status") or "?"
+        lines = [f"## {title}  [{status}]", f"ID: {p.get('id', '?')}"]
+        description = (p.get("description") or "").strip()
+        if description:
+            lines.append("")
+            lines.append(description)
+        solution = (p.get("solution") or "").strip()
+        if solution:
+            lines.append("")
+            lines.append("**Решение:**")
+            lines.append(solution)
+        history = _format_investigation_history(p)
+        if history:
+            lines.append("")
+            body = [history[0].lstrip("\n")] + history[1:]
+            for line in body:
+                if line.strip():
+                    lines.append(line)
+        chunks.append("\n".join(lines))
+    return "\n\n".join(chunks)
+
+
+def _export_markdown(problems, out_dir=None):
+    """Пишет markdown-экспорт в <out_dir>/problems_<дата>.md.
+
+    Возвращает (путь, количество записей).
+    """
+    out_dir = Path(out_dir) if out_dir else EXPORT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    path = out_dir / f"problems_{date_str}.md"
+    path.write_text(_problems_to_markdown(problems), encoding="utf-8")
+    return path, len(problems)
+
+
+def _export_backup(out_dir=None):
+    """Копирует data/problems.json в <out_dir>/problems_<дата-время>.json.
+
+    Возвращает путь. Имя с timestamp, чтобы не перезаписывать прошлые бэкапы.
+    """
+    out_dir = Path(out_dir) if out_dir else BACKUP_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    dest = out_dir / f"problems_{ts}.json"
+    source = _problems.DATA_FILE
+    if source.exists():
+        dest.write_bytes(source.read_bytes())
+    else:
+        dest.write_text("[]", encoding="utf-8")
+    return dest
+
+
+def _export_menu():
+    print("\n====== ЭКСПОРТ И БЭКАП ======")
+    print("1. Экспорт в Markdown (export/)")
+    print("2. Бэкап JSON (backup/)")
+    print("3. Всё (markdown + backup)")
+    print("0. Назад")
+
+    choice = input("\nВыберите пункт: ").strip()
+
+    problems = _problems.load_problems()
+    count = len(problems)
+
+    if choice == "1":
+        path = _export_markdown(problems)[0]
+        print(f"\nЭкспорт: {path} ({count} записей)")
+    elif choice == "2":
+        path = _export_backup()
+        print(f"\nБэкап: {path} ({count} записей)")
+    elif choice == "3":
+        path = _export_markdown(problems)[0]
+        bk_path = _export_backup()
+        print(f"\nЭкспорт: {path} ({count} записей)")
+        print(f"Бэкап: {bk_path}")
+    elif choice == "0":
+        return
+    else:
+        print("\nНеверный выбор.")
+
+
+def export():
+    """Команда экспорта: markdown-экспорт и/или бэкап (только чтение)."""
+    try:
+        _export_menu()
+    except _problems.ProblemError as exc:
+        print(f"\nОшибка данных: {exc}")
+    except OSError as exc:
+        print(f"\nОшибка файла: {exc}")
+    except (KeyboardInterrupt, EOFError):
+        print("\n\nВозврат в главное меню.")

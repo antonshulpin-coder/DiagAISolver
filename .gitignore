@@ -10,3 +10,6 @@ data/*_test.json
 
 # Local manual backups (out of git).
 backup/
+
+# Local export output (out of git).
+export/
