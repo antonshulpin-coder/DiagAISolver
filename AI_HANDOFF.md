@@ -1,14 +1,41 @@
 # AI_HANDOFF.md
 
 ## Текущая версия
-**1.5.0 — Проекты (изоляция данных по проектам)** — 626 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + endpoint (v1.3.6) + app-заголовки (v1.3.7) + фенс-фикс (v1.3.9) + отчёт «Как расследовали» (v1.4.0) + экспорт/бэкап (v1.4.1) + **Проекты (v1.5.0)**. Real AI smoke-test **пройден (3/3 OK)**.
+**1.5.1 — Экран проекта + контракт данных** — 638 тестов. Кодовая база: AI Diagnostic SOLVE (v1.2) + Полировка UX диагностики (v1.3) + endpoint (v1.3.6) + app-заголовки (v1.3.7) + фенс-фикс (v1.3.9) + отчёт «Как расследовали» (v1.4.0) + экспорт/бэкап (v1.4.1) + Проекты (v1.5.0) + **Экран проекта (v1.5.1)**. Real AI smoke-test **пройден (3/3 OK)**.
 
 ## Состояние проекта
-Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 626 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения (`ai.app_url`/`ai.app_title`); парсеры снимают markdown-фенс (`_strip_markdown_fence`); отчёт solve выводит «Как расследовали» (`_format_investigation_history`); команда «5. Экспорт и бэкап» (`export()`) пишет `export/problems_<дата>.md` и `backup/problems_<дата-время>.json` (только чтение хранилища); команда «6. Проекты» (`projects()`, `src/projects.py`) — CRUD проектов `data/projects.json` и привязка проблем (`project_id`).
+Полностью рабочий CLI-инструмент с базой знаний, хранилищем проблем и режимом SOLVE. 638 тестов проходит. AI конфигурируется через `config/settings.json`. OpenAI API использует актуальные параметры (`max_completion_tokens`, обработка `refusal` и `null` content); endpoint переопределяем через `ai.base_url` (напр. OpenRouter); заголовки идентификации приложения (`ai.app_url`/`ai.app_title`); парсеры снимают markdown-фенс (`_strip_markdown_fence`); отчёт solve выводит «Как расследовали» (`_format_investigation_history`); команда «5. Экспорт и бэкап» (`export()`) пишет `export/problems_<дата>.md` и `backup/problems_<дата-время>.json` (только чтение хранилища); команда «6. Проекты» (`projects()`, `src/projects.py`) — CRUD проектов `data/projects.json` и привязка проблем (`project_id`), включая **экран проекта** (просмотр проекта и его проблем, отвязка, чтение-только открытие проблемы; v1.5.1).
 
-**Текущий этап:** **v1.5.0 — Проекты** (команда меню «6. Проекты», `src/projects.py`, изоляция данных по проектам) реализована и оформлена как релиз. Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации; v1.3.9 — фикс markdown-фенсов; v1.4.0 — история расследования в отчёте solve; v1.4.1 — экспорт и бэкап (команда меню 5, `export/` и `backup/`, только чтение); **v1.5.0 — Проекты (команда меню 6, `data/projects.json`, привязка проблем через `project_id`, изоляция данных)**.
+**Текущий этап:** **v1.5.1 — Экран проекта** (просмотр проекта из меню «6. Проекты → 3. Открыть проект», статистика, отвязка/открытие проблемы, чтение-только) реализован и оформлен как релиз. Архитектурный план диагностики — `docs/DIAGNOSTIC_DESIGN.md`. **v1.3 закрыта**; v1.3.1–1.3.3 — инфраструктура/доки; v1.3.5/1.3.6 — smoke-инструмент + endpoint; v1.3.7 — заголовки идентификации; v1.3.9 — фикс markdown-фенсов; v1.4.0 — история расследования в отчёте solve; v1.4.1 — экспорт и бэкап (команда меню 5, `export/` и `backup/`, только чтение); v1.5.0 — Проекты (команда меню 6, `data/projects.json`, привязка проблем через `project_id`, изоляция данных); **v1.5.1 — Экран проекта (просмотр + отвязка/чтение-только, контракт данных `data/projects.json`)**.
 
-**Изоляция / гарантии (v1.5.0):** проекты пишутся в отдельный файл `data/projects.json` (личные данные, в `.gitignore`); `project_id` **не** попадает в AI-контекст, knowledge-записи и markdown-экспорт (проверено, поле упоминается только в командах проектов и `UPDATEABLE_FIELDS`); `src/diagnostic.py`, `src/solve.py`, `src/ai/*`, `src/storage.py` не менялись; удаление проекта отвязывает проблемы, но не удаляет их; «Экран проекта» — намеренная заглушка на v1.5.1 (в `_open_project`).
+**Изоляция / гарантии (v1.5.1):** проекты пишутся в отдельный файл `data/projects.json` (личные данные, в `.gitignore`); `project_id` **не** попадает в AI-контекст, knowledge-записи и markdown-экспорт (проверено, поле упоминается только в командах проектов и `UPDATEABLE_FIELDS`); `src/diagnostic.py`, `src/solve.py`, `src/ai/*`, `src/storage.py` не менялись; удаление проекта отвязывает проблемы, но не удаляет их; **с экрана проекта нельзя удалить проблему** — только просмотр и отвязка (отвязка не удаляет проблему, `project_id=None`); для done-проекта экран — только просмотр (отвязка недоступна); «Экран проекта» реализован (заглушка v1.5.0 удалена).
+
+## Контракт данных data/projects.json (v1.5.1)
+
+Источник — код `src/projects.py`. Файл — личный (в `.gitignore`), в репозитории не хранится.
+
+### Поля записи проекта (Project)
+Каждая запись — dict:
+- `id` — `str` вида `"p_" + 12 hex` (`_new_id`), уникальный.
+- `name` — `str`, непустой (обязательно; `create_project`/`rename_project` бросают `ProjectError` при пустом/whitespace).
+- `goal` — `str`, может быть пустой; `.strip()` при создании/переименовании.
+- `created` — `str`, ISO-8601 UTC (`datetime.now(timezone.utc).isoformat()`), автоматически при создании.
+- `status` — `str`, одно из `VALID_STATUSES = ("active", "done")`. Другое значение → `ProjectError` (`set_project_status`).
+
+Файл (корневой контейнер) — **JSON-массив** этих dict (не объект-словарь). `load_projects()`: отсутствие файла → `[]`; не-`list` → `ProjectError`; битый JSON → `ProjectError`.
+
+### Поле привязки на проблеме (в `data/problems.json`)
+Проблема хранит `project_id` (не вложенность). Добавлен в `UPDATEABLE_FIELDS` (`src/problems.py`) — `project_id` обновляется через `_problems.update_problem(..., project_id=...)`. У старых записей поле отсутствует (миграция не нужна).
+
+### Правила
+- Проблема принадлежит **не более чем одному проекту** (`project_id` — единственное поле привязки; `bind_problem` просто перезаписывает его, не снимая со старого проекта).
+- `project_id = None` (или отсутствие поля) — проблема **не привязана**.
+- Привязка к несуществующему проекту → `ProjectError` (`bind_problem`); привязка к несуществующей проблеме → возврат `None`.
+- **Удаление проекта отвязывает проблемы, но не удаляет их** (`unbind_all_projects`/`delete_project`; `project_id` → `None`).
+- **Запись атомарная** (`save_projects`): JSON в `data/projects.json.tmp` → `replace(DATA_FILE)`; при ошибке tmp удаляется, бросается `ProjectError`. Тот же паттерн, что в `src/problems.py`.
+
+### API привязки/чтения (`src/projects.py`)
+`bind_problem(problem_id, project_id)` — привязка/отвязка (`None`), возвращает обновлённую проблему; `unbind_all_problems(project_id)` — отвязка всех проблем проекта; `problems_of_project(project_id)` — список проблем проекта (чтение); `count_project_problems(project_id)` — их количество. `project_id=None` у `bind_problem` — отвязка (используется экраном проекта v1.5.1).
 
 ## Инфраструктура репозитория (v1.3.2–v1.3.3; дополнено v1.3.6)
 
@@ -233,10 +260,11 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | v1.4.0 | История расследования в отчёте solve: секция «Как расследовали» (`_format_investigation_history`) | ✅ |
 | v1.4.1 | Экспорт и бэкап: команда меню 5, `export/problems_<дата>.md` + `backup/problems_<дата-время>.json` | ✅ |
 | v1.5.0 | Проекты: команда меню 6, `src/projects.py`, `data/projects.json`, привязка проблем через `project_id` (+36 тестов, 626 total) | ✅ |
+| v1.5.1 | Экран проекта (просмотр + отвязка/чтение-только) + контракт данных `data/projects.json` (+12 тестов, 638 total) | ✅ |
 
-## Результаты тестов (актуально на v1.5.0)
+## Результаты тестов (актуально на v1.5.1)
 
-Подсчёт — источник истины `pytest --collect-only -q` на зафиксированном состоянии v1.5.0: **626 passed, 0 failed**.
+Подсчёт — источник истины `pytest --collect-only -q` на зафиксированном состоянии v1.5.1: **638 passed, 0 failed**.
 
 | Файл | Кол-во | Пополнялся в |
 |------|-------:|--------------|
@@ -250,7 +278,7 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | test_diagnostic_ux.py | 20 | v1.3.0 |
 | test_export.py | 18 | v1.4.1 |
 | test_problems.py | 43 | v0.9.1 |
-| test_projects.py | 36 | v1.5.0 |
+| test_projects.py | 48 | v1.5.1 (+13/−1 stub: `TestProjectScreen`) |
 | test_router.py | 7 | v0.9.3 |
 | test_search.py | 31 | v0.8 |
 | test_solve.py | 48 | v0.9.2 |
@@ -258,7 +286,7 @@ suggest_next_check(problem, diagnostic_context) -> AIResponse
 | test_solve_cli.py | 21 | v0.9.4 |
 | test_solve_report_history.py | 11 | v1.4.0 |
 | test_storage.py | 31 | v0.8 |
-| **Итого** | **626** | 
+| **Итого** | **638** | 
 
 ## Что реализовано в v1.0 Phase 4
 
@@ -404,6 +432,12 @@ src/commands.py               — CLI, auto-detect provider
 | `src/commands.py` | +команда «Проекты» (v1.5.0): `projects()` и подменю `_projects_loop`, `_pick_project`, `_create_project`, `_list_projects`, `_open_project`, `_rename_project`, `_toggle_project`, `_delete_project`, `_bind_problem_flow`, `_bind_unbind_flow`, `_filter_problems`; опция «п» в `_handle_existing_problem` |
 | `tests/test_projects.py` | Новый: 36 тестов (v1.5.0) |
 | `.gitignore` | +`data/projects.json` (личные данные проектов, v1.5.0) |
+| `src/commands.py` | +экран проекта (v1.5.1): `_show_project_screen`, `_open_project_problem`, `_unbind_project_problem`, `_show_problem_detail` (чтение-только), `_list_project_problems`, `_label_problem_status`, `_format_created_date`, константа `_PROBLEM_STATUS_RU`; `_open_project` → вход в экран (заглушка удалена) |
+| `tests/test_projects.py` | v1.5.1: stub `test_open_project_stub` удалён; добавлен `TestProjectScreen` (+13). Итог файла: 48 тестов |
+| `pyproject.toml` | +version 1.5.1 (v1.5.1) |
+| `CHANGELOG.md` | +запись v1.5.1 (v1.5.1) |
+| `ROADMAP.md` | +секция 1.5.1; «Экран проекта» → закрытые (v1.5.1) |
+| `AI_HANDOFF.md` | +v1.5.1, таблица тестов (638), контракт данных `data/projects.json` |
 
 ## Ограничения
 
@@ -415,7 +449,7 @@ src/commands.py               — CLI, auto-detect provider
 
 ## Следующий этап
 
-Кодовая база: v1.3 UX-полировка + v1.3.6 endpoint + v1.3.7 app-заголовки + v1.3.9 фенс-фикс + v1.4.0 история расследования + v1.4.1 экспорт/бэкап + v1.5.0 Проекты (626 тестов) реализованы. **Real AI smoke-test ЗАКРЫТ (v1.3.8)** — 3/3 OK; фенсы зафиксированы (v1.3.9); **v1.4.0** добавил «Как расследовали» в отчёт solve; **v1.4.1** добавил команду «Экспорт и бэкап» (только чтение `data/problems.json`, markdown переиспользует `_format_investigation_history`; `export/` и `backup/` в .gitignore; для пункта меню тронуты `src/menu.py` и `src/router.py`); **v1.5.0** добавил команду «Проекты» (`src/projects.py`, `data/projects.json`, привязка проблем через `project_id`; `project_id` добавлен в `UPDATEABLE_FIELDS`; меню/router/commands правки; `data/projects.json` в .gitignore).
+Кодовая база: v1.3 UX-полировка + v1.3.6 endpoint + v1.3.7 app-заголовки + v1.3.9 фенс-фикс + v1.4.0 история расследования + v1.4.1 экспорт/бэкап + v1.5.0 Проекты + v1.5.1 Экран проекта (638 тестов) реализованы. **Real AI smoke-test ЗАКРЫТ (v1.3.8)** — 3/3 OK; фенсы зафиксированы (v1.3.9); **v1.4.0** добавил «Как расследовали» в отчёт solve; **v1.4.1** добавил команду «Экспорт и бэкап» (только чтение `data/problems.json`, markdown переиспользует `_format_investigation_history`; `export/` и `backup/` в .gitignore; для пункта меню тронуты `src/menu.py` и `src/router.py`); **v1.5.0** добавил команду «Проекты» (`src/projects.py`, `data/projects.json`, привязка проблем через `project_id`; `project_id` добавлен в `UPDATEABLE_FIELDS`; меню/router/commands правки; `data/projects.json` в .gitignore); **v1.5.1** добавил экран проекта (просмотр проекта и его проблем, отвязка/чтение-только открытие проблемы, «Открыть проект» вместо заглушки; исключительно `src/commands.py`) и задокументировал контракт данных `data/projects.json`.
 
 Следующий этап: **Ожидает решения пользователя**.
 
@@ -430,7 +464,7 @@ src/commands.py               — CLI, auto-detect provider
 5. Тесты: `.\.venv\Scripts\python.exe -m pytest tests -v`
 6. Все AI-вызовы опциональны — SOLVE работает без них
 7. Не добавляй сторонние зависимости
-8. Не меняй существующие тесты (итог на текущий момент — 626)
+8. Не меняй существующие тесты (итог на текущий момент — 638)
 9. Малые изменения, тесты после каждого изменения
 
-> Статус рабочего дерева: чисто, актуальный релиз v1.5.0 «Проекты» (626 тестов).
+> Статус рабочего дерева: чисто, актуальный релиз v1.5.1 «Экран проекта» (638 тестов).
