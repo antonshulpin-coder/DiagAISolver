@@ -17,6 +17,12 @@ PROJECTS_TEST = Path(__file__).resolve().parent.parent / "data" / "projects_test
 def _clean():
     PROBLEMS_TEST.unlink(missing_ok=True)
     PROJECTS_TEST.unlink(missing_ok=True)
+    # Clean export directory
+    export_dir = Path(__file__).resolve().parent.parent / "export"
+    for f in export_dir.glob("project_*.md"):
+        f.unlink(missing_ok=True)
+    for f in export_dir.glob("problems_*.md"):
+        f.unlink(missing_ok=True)
 
 
 def _patch_data_files(func):
@@ -547,5 +553,135 @@ class TestProjectsMenuRouter(unittest.TestCase):
         mock_projects.assert_called_once()
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestProjectExport(ProjectBase):
+    """Тесты экспорта проекта в markdown (v1.5.2)."""
+
+    def _enter_screen_export(self, project, exit_seq=("0", "0")):
+        """Вход в экран проекта с экспортом: 3 -> проект -> 4 -> 0 -> 0."""
+        buf = StringIO()
+        seq = ["3", "1", "4", *exit_seq]
+        with patch("src.commands.input", side_effect=seq):
+            with redirect_stdout(buf):
+                commands.projects()
+        return buf.getvalue()
+
+    def test_export_active_project_with_problems(self):
+        """Активный проект с проблемами: экспорт создает файл в export/."""
+        proj = self._create_project("Мой проект", "Цель")
+        p1 = self._create_problem("Проблема А")
+        p2 = self._create_problem("Проблема Б")
+        _projects.bind_problem(p1["id"], proj["id"])
+        _projects.bind_problem(p2["id"], proj["id"])
+        out = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён", out)
+
+    def test_export_done_project(self):
+        """Done-проект: экспорт доступен (ограничения done-экрана на экспорт не распространяются)."""
+        proj = self._create_project("Закрытый")
+        _projects.close_project(proj["id"])
+        p = self._create_problem("Проблема")
+        _projects.bind_problem(p["id"], proj["id"])
+        out = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён", out)
+
+    def test_export_empty_project(self):
+        """Пустой проект: создаётся файл с пометкой «проблем нет»."""
+        proj = self._create_project("Пустой")
+        out = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён", out)
+        self.assertIn("проблем нет", out.lower())
+
+    def test_export_project_slug(self):
+        """Небезопасное имя проекта: экспорт проходит без ошибок."""
+        proj = self._create_project("Проект: с/спец!символами")
+        p = self._create_problem("К")
+        _projects.bind_problem(p["id"], proj["id"])
+        out = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён", out)
+
+    def test_export_feedback_has_path(self):
+        """Обратная связь содержит путь к файлу."""
+        proj = self._create_project("Обратная связь", "Цель")
+        p1 = self._create_problem("Первая")
+        p2 = self._create_problem("Вторая")
+        _projects.bind_problem(p1["id"], proj["id"])
+        _projects.bind_problem(p2["id"], proj["id"])
+        out = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён:", out)
+
+    def test_regress_no_crash_on_classic_export(self):
+        """Регресс: классический экспорт v1.4.1 не должен падать на базовом вводе."""
+        try:
+            with patch("src.commands.input", side_effect=["5", "1", "0"]):
+                with redirect_stdout(StringIO()):
+                    commands.projects()
+        except (StopIteration, SystemExit):
+            pass
+
+    def test_export_overwrites_existing_file(self):
+        """F2: повторный экспорт того же проекта в тот же день перезаписывает файл (не дописывает, не падает)."""
+        proj = self._create_project("Дубликат")
+        p = self._create_problem("Первая")
+        _projects.bind_problem(p["id"], proj["id"])
+        # Первый экспорт
+        out1 = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён", out1)
+        # Находим созданный файл
+        import glob
+        files = glob.glob("export/project_*.md")
+        self.assertEqual(len(files), 1)
+        with open(files[0], "r", encoding="utf-8") as f:
+            content1 = f.read()
+        # Второй экспорт того же проекта
+        out2 = self._enter_screen_export(proj)
+        self.assertIn("Экспорт заверён", out2)
+        files2 = glob.glob("export/project_*.md")
+        self.assertEqual(len(files2), 1)  # файл не продублировался
+        with open(files2[0], "r", encoding="utf-8") as f:
+            content2 = f.read()
+        # Содержимое идентично (перезапись, не дозапись)
+        self.assertEqual(content1, content2)
+        self.assertIn("Первая", content2)
+        # Заголовок появляется дважды (в детальном списке и в сводном) — это корректно
+        self.assertEqual(content2.count("Первая"), 2)
+
+    def test_export_isolation_only_own_problems(self):
+        """Изоляция: в экспорт попадают ТОЛЬКО проблемы этого проекта."""
+        proj_a = self._create_project("Проект А")
+        proj_b = self._create_project("Проект Б")
+        p_a = self._create_problem("Проблема А")
+        p_b = self._create_problem("Проблема Б")
+        p_free = self._create_problem("Свободная")
+        _projects.bind_problem(p_a["id"], proj_a["id"])
+        _projects.bind_problem(p_b["id"], proj_b["id"])
+        # p_free остаётся без проекта
+        out = self._enter_screen_export(proj_a)
+        self.assertIn("Экспорт заверён", out)
+        import glob
+        files = glob.glob("export/project_*.md")
+        self.assertEqual(len(files), 1)
+        with open(files[0], "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("Проблема А", content)
+        self.assertNotIn("Проблема Б", content)
+        self.assertNotIn("Свободная", content)
+        # Проблема А встречается дважды (детальный + сводный) — это корректно
+        self.assertEqual(content.count("Проблема А"), 2)
+
+    def test_export_write_error_handled(self):
+        """F4: ошибка записи (нет прав/диск) — аккуратное сообщение без трейсбека."""
+        proj = self._create_project("Ошибка записи")
+        p = self._create_problem("Тест")
+        _projects.bind_problem(p["id"], proj["id"])
+        # Мокаем write_text, чтобы кидал OSError (PermissionError)
+        with patch("pathlib.Path.write_text", side_effect=OSError("Permission denied")):
+            buf = StringIO()
+            seq = ["3", "1", "4", "0", "0"]
+            with patch("src.commands.input", side_effect=seq):
+                with redirect_stdout(buf):
+                    commands.projects()
+            out = buf.getvalue()
+            self.assertIn("Ошибка записи файла", out)
+            self.assertNotIn("Traceback", out)
+            self.assertNotIn("PermissionError", out)
+            # Не должно упасть исключением

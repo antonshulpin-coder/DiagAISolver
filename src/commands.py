@@ -1236,6 +1236,33 @@ def _label_problem_status(problem):
     return _PROBLEM_STATUS_RU.get(problem.get("status"), problem.get("status", "?"))
 
 
+def project_slug(name: str) -> str:
+    """Генерация безопасного имени файла из названия проекта.
+
+    Недопустимые для имени символы заменяются на '_', пробелы сжимаются,
+    результат обрезается до разумной длины. Транслитерация не требуется.
+    """
+    # Заменяем все символы, кроме букв, цифр и пробелов, на '_'
+    result = ""
+    for ch in name:
+        if ch.isalnum() or ch == " ":
+            result += ch
+        else:
+            result += "_"
+    # Заменяем пробелы на '_', схлопываем повторяющиеся '_'
+    result = "_".join(result.split())
+    # Удаляем ведущие/конечные '_'
+    result = result.strip("_")
+    # Ограничиваем длину
+    max_len = 40
+    if len(result) > max_len:
+        result = result[:max_len].strip("_")
+    # Если получилось пустое имя — используем project
+    if not result:
+        result = "project"
+    return result
+
+
 def _show_problem_detail(problem):
     """Чтение-только просмотр проблемы (для экрана проекта)."""
     print(f"\n--- Проблема: {problem['id']} ---")
@@ -1286,6 +1313,7 @@ def _show_project_screen(project):
         print("\n1. Обновить")
         print("2. Отвязать проблему" if not closed else "2. (недоступно — проект закрыт)")
         print("3. Открыть проблему")
+        print("4. Экспорт")
         print("0. Назад")
 
         choice = input("\nВыберите: ").strip()
@@ -1295,6 +1323,8 @@ def _show_project_screen(project):
             continue
         elif choice == "3":
             _open_project_problem(problems)
+        elif choice == "4":
+            export_project(project)
         elif choice == "2":
             if closed:
                 print("\nПроект закрыт — отвязка недоступна.")
@@ -1491,3 +1521,85 @@ def projects():
         print(f"\nОшибка данных: {exc}")
     except (KeyboardInterrupt, EOFError):
         print("\n\nВозврат в главное меню.")
+
+
+def export_project(project):
+    """Экспорт проблем проекта в markdown-файл (только чтение).
+
+    Формат: export/project_<slug>_<ГГГГ-ММ-ДД>.md
+    Содержимое: заголовок проекта, статистика, список проблем.
+    Пустой проект: файл создаётся с пометкой «проблем нет».
+    """
+    from pathlib import Path
+    import datetime
+
+    problems = _projects.problems_of_project(project["id"])
+    date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    slug = project_slug(project["name"])
+    filename = f"project_{slug}_{date_str}.md"
+    filepath = EXPORT_DIR / filename
+
+    # Формируем содержимое
+    lines = []
+    lines.append(f"# Проект: {project['name']}")
+    status = "закрыт" if project["status"] == "done" else "активен"
+    lines.append(f"**Статус:** {status}")
+    lines.append(f"**Дата создания:** {_format_created_date(project.get('created'))}")
+    if project.get("goal"):
+        lines.append(f"**Цель:** {project['goal']}")
+
+    # Статистика
+    if problems:
+        stats = {}
+        for p in problems:
+            stats[p["status"]] = stats.get(p["status"], 0) + 1
+        lines.append("")
+        lines.append("--- Статистика ---")
+        lines.append(f"**Всего проблем:** {len(problems)}")
+        for st, cnt in stats.items():
+            lines.append(f"  {_PROBLEM_STATUS_RU.get(st, st)}: {cnt}")
+    else:
+        lines.append("")
+        lines.append("--- Статистика ---")
+        lines.append("**Всего проблем:** 0")
+        lines.append("*Проблем нет*")
+
+    # Список проблем
+    lines.append("")
+    lines.append("--- Проблемы проекта ---")
+    if not problems:
+        lines.append("*Проблем нет*")
+    else:
+        for p in problems:
+            label = _label_problem_status(p)
+            lines.append(f"### {p['id']}  [{label}] {p['title']}")
+            # История диагностики (как в v1.4.1)
+            history = _format_investigation_history(p)
+            if history:
+                # Берем первую строку как заголовок, остальное — тело
+                body_lines = [history[0].lstrip("\n")] + history[1:]
+                diagnostic_lines = []
+                for bl in body_lines:
+                    stripped = bl.strip()
+                    if stripped:
+                        diagnostic_lines.append(stripped)
+                if diagnostic_lines:
+                    lines.append("*Как расследовали:*")
+                    for dl in diagnostic_lines:
+                        lines.append(f"  {dl}")
+
+    # Добавляем список проблем с id и статусом
+    lines.append("")
+    lines.append("--- Список проблем ---")
+    for p in problems:
+        lines.append(f"- {p['id']}: {p['title']} ({_label_problem_status(p)})")
+
+    content = "\n".join(lines)
+
+    # Пишем файл (как в v1.4.1 — перезапись, если файл уже есть)
+    try:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_text(content, encoding="utf-8")
+        print(f"\nЭкспорт заверён: {filepath} ({len(problems)} проблем)")
+    except OSError as exc:
+        print(f"\nОшибка записи файла: {exc}")
